@@ -470,7 +470,7 @@ func agentOperations(st *model.State, a model.Account, operation string, raw jso
 		if err = expected(t, in.ExpectedVersion); err != nil {
 			return nil, false, err
 		}
-		if a.ServiceSessionID != "" || a.ServiceRunID != "" || !t.Agent || t.Kind != "task" || t.Status != "Refine" || !refinementQueueAvailable(st, t) {
+		if a.ServiceSessionID != "" || !t.Agent || t.Kind != "task" || t.Status != "Refine" || !refinementQueueAvailable(st, t) {
 			return nil, false, failure(409, "refinement_owned", "Only an unowned queued Refine task can return to human Todo")
 		}
 		workflow := st.Projects[t.ProjectID].HumanWorkflow

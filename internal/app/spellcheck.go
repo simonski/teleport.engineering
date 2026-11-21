@@ -59,7 +59,7 @@ func spellcheckEligible(st *model.State, a model.Account, in SpellcheckInput) (m
 	if err = expected(t, in.ExpectedVersion); err != nil {
 		return t, u, agent, err
 	}
-	if a.ServiceRunID != "" || a.ServiceSessionID != "" || t.Kind != "task" || t.Agent || t.Status != "Todo" || t.Protected || t.Archived || t.Deleted || busy(t) || t.StopRequested || t.ResumeHold {
+	if a.ServiceSessionID != "" || t.Kind != "task" || t.Agent || t.Status != "Todo" || t.Protected || t.Archived || t.Deleted || busy(t) || t.StopRequested || t.ResumeHold {
 		return t, u, agent, failure(409, "spellcheck_unavailable", "Spellcheck requires an editable human Todo ticket")
 	}
 	p := st.Projects[t.ProjectID]
@@ -95,7 +95,7 @@ func (s *Service) spellcheckCall(ctx context.Context, token, operation string, r
 		if err != nil {
 			return nil, err
 		}
-		if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+		if a.ServiceSessionID != "" {
 			return nil, failure(403, "human_required", "A human account is required")
 		}
 		t, err := ticketFor(st, a, in.ID, "Viewer")
@@ -131,7 +131,7 @@ func (s *Service) spellcheckCall(ctx context.Context, token, operation string, r
 		if err != nil {
 			return nil, err
 		}
-		if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+		if a.ServiceSessionID != "" {
 			return nil, failure(403, "human_required", "A human account is required")
 		}
 		row, ok := st.LocalSessions[in.ID]
@@ -163,7 +163,7 @@ func (s *Service) spellcheckCall(ctx context.Context, token, operation string, r
 	if err != nil {
 		return nil, err
 	}
-	if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+	if a.ServiceSessionID != "" {
 		return nil, failure(403, "human_required", "A human account is required")
 	}
 	key, hash, saved, err := receipt(st, a, operation, in.RequestID, in)

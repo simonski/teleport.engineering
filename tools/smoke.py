@@ -23,7 +23,7 @@ from smoke_profile import Profile
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def verify_tp_console(browser, tp):
+def verify_tp_console(browser):
     browser("click", "#javascript-console")
     browser("wait", "#script-source")
     browser("fill", "#script-source", "tp project ls -json")
@@ -34,7 +34,6 @@ def verify_tp_console(browser, tp):
     browser("press", "Enter")
     browser("eval", "if(window.consoleExecuted || !document.querySelector('#script-status').textContent.includes('Enter a tp command'))throw new Error('Console accepted JavaScript')")
     browser("press", "Escape")
-    assert not json.loads(tp("listScriptRuns"))["items"]
 
 def verify_connection_interruption(browser):
     browser("click", "#javascript-console")
@@ -351,7 +350,7 @@ def main(temporary_root=None):
                         return
                     if args.console_only:
                         browser("wait", "#javascript-console")
-                        verify_tp_console(browser, tp)
+                        verify_tp_console(browser)
                         print("PASS: authenticated tp command console, API result and JavaScript rejection")
                         return
                     if not seeded_browser:
@@ -438,7 +437,7 @@ def main(temporary_root=None):
                         browser("click", '#editor button[type="submit"]')
                         browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
                         assert not json.loads(tp("getSession"))["settings"]["handbrake"]
-                        verify_tp_console(browser, tp)
+                        verify_tp_console(browser)
                         browser("click", "#harness-console")
                         browser("wait", "#new-console")
                         browser("press", "Escape")

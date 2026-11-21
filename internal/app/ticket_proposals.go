@@ -65,7 +65,7 @@ type proposalFeedbackReceipt struct {
 }
 
 func ticketProposalOperations(st *model.State, a model.Account, operation string, raw json.RawMessage) (any, bool, error) {
-	if a.ServiceRunID != "" || a.ServiceSessionID != "" && operation != "submitTicketProposal" && operation != "getProposalRunContext" && operation != "reportProposalRunUsage" {
+	if a.ServiceSessionID != "" && operation != "submitTicketProposal" && operation != "getProposalRunContext" && operation != "reportProposalRunUsage" {
 		return nil, false, failure(403, "human_required", "A human account is required")
 	}
 	if a.ServiceSessionReadOnly && (operation == "submitTicketProposal" || operation == "reportProposalRunUsage") {

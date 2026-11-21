@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// ScriptCall and ScriptRun retain historical records from releases with a server-side interpreter.
 type ScriptCall struct {
 	ID                string          `json:"id"`
 	Operation         string          `json:"operation"`
@@ -47,34 +48,18 @@ type ScriptRun struct {
 	FinishedAt    *time.Time   `json:"finishedAt,omitempty"`
 }
 
+func (row ScriptRun) Unresolved() bool {
+	switch row.State {
+	case "completed", "failed", "stopped", "interrupted":
+		return false
+	default:
+		return true
+	}
+}
+
 // WithdrawSuspendedPrivateExecutions runs in the same server transaction as
 // account changes. Reactivation cannot undo a committed execution withdrawal.
 func (st *State) WithdrawSuspendedPrivateExecutions() {
-	for id, row := range st.ScriptRuns {
-		a, ok := st.Accounts[row.Creator]
-		if ok && !a.Suspended {
-			continue
-		}
-		if row.State == "completed" || row.State == "failed" || row.State == "stopped" || row.State == "interrupted" {
-			continue
-		}
-		row.StopRequested = true
-		if row.StopActor == "" {
-			now := time.Now().UTC()
-			row.StopActor = "account-state"
-			row.StopAt = &now
-		}
-		if row.State != "unknown" {
-			row.State = "stopping"
-		}
-		row.ErrorCode = "script_account_withdrawn"
-		for i := range row.Calls {
-			if row.Calls[i].State == "waiting" || row.Calls[i].State == "approved" {
-				row.Calls[i].State = "cancelled"
-			}
-		}
-		st.ScriptRuns[id] = row
-	}
 	for id, row := range st.LocalSessions {
 		if row.TicketID != 0 || row.State == "exited" || row.State == "failed" {
 			continue

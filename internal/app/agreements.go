@@ -82,7 +82,7 @@ func agreementOperations(st *model.State, a model.Account, operation string, raw
 			if in.ReadyBasis != readyReviewBasis(st, t) {
 				return nil, false, failure(409, "agreement_stale", "Refresh the exact final readiness review basis")
 			}
-			if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+			if a.ServiceSessionID != "" {
 				return nil, false, failure(403, "human_review_required", "Only an authenticated human can review Ready work")
 			}
 			t.ReadyApproval = &model.ReadyApproval{RecordVersion: t.Version + 1, Basis: readyReviewBasis(st, t), Actor: a.ID, At: time.Now().UTC()}

@@ -4,7 +4,7 @@ async function api(operation,data={}){
   const dialog=document.querySelector('tk-dialog[open]'),form=dialog?.querySelector('form'),actor=session?.account.id,generation=loadGeneration;
   const response=await fetch('/api/tools/'+operation,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}),result=await response.json();
   if(!response.ok){const error=new Error(result.error?.message||'Request failed');error.status=response.status;error.code=result.error?.code;throw error;}
-  const personal=['setAppearance','saveViewPreferences','saveCurrentLocation','getViewPreferences','attachSession','listSessions','getLocalHarnesses','getScriptBindings','getScriptRun','listScriptRuns'].includes(operation);
+  const personal=['setAppearance','saveViewPreferences','saveCurrentLocation','getViewPreferences','attachSession','listSessions','getLocalHarnesses','getScriptBindings'].includes(operation);
   if(!['getSession','login'].includes(operation)&&(!personal&&generation!==loadGeneration||actor&&session?.account.id!==actor)){const error=new Error('Request completed after its account or view changed');error.staleInteraction=true;throw error;}
   if(form&&!personal&&!/^(get|list|preview|search)/.test(operation)&&(!dialog.open||dialog.querySelector('form')!==form||session?.account.id!==actor||generation!==loadGeneration)){const error=new Error('Request completed after its interaction changed');error.staleInteraction=true;throw error;}
   return result;

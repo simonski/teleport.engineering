@@ -28,7 +28,7 @@ func hostHarnessActor(st *model.State, token string) (model.Account, error) {
 	if err != nil {
 		return a, err
 	}
-	if !a.Administrator || a.ServiceSessionID != "" || a.ServiceRunID != "" {
+	if !a.Administrator || a.ServiceSessionID != "" {
 		return a, failure(403, "forbidden", "Only a human installation administrator can inspect host processes")
 	}
 	if len(st.Accounts) != 1 {

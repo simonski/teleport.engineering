@@ -2,9 +2,8 @@
 .PHONY: help build build-debug install sbom browser-tools deploy deploy-reset db-up db-down check check-go check-integration check-race race-check check-full test lint clean
 DEPLOY_HOST ?= exedev@teleport.engineering
 DEPLOY_DIR ?= /home/exedev/teleport
-DEPLOY_BUILDER ?= auto
 DEPLOY_ADDR ?= 0.0.0.0:8000
-export DEPLOY_HOST DEPLOY_DIR DEPLOY_BUILDER DEPLOY_ADDR DEPLOY_PUBLIC_HOSTS
+export DEPLOY_HOST DEPLOY_DIR DEPLOY_ADDR DEPLOY_PUBLIC_HOSTS
 export CONFIRM
 help:
 	@echo ""

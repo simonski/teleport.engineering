@@ -19,7 +19,7 @@ The browser bundles Three.js 0.187.0 under its [MIT license](internal/server/web
 
 Run `make sbom` to generate `sbom.cdx.json`.
 
-Release builds use size-optimized C code, stripped native debugging information and a compressed embedded web bundle. `make build-debug` retains native debug information when needed. `python3 -B tools/pack_web.py` refreshes the committed bundle after editing browser assets; normal builds refresh it automatically, and `--verify` detects a stale bundle. Deployments use compressed SCP while retaining binary hash verification.
+Release builds use pure Go, stripped debugging information and a compressed embedded web bundle. `make build-debug` retains native debug information when needed. `python3 -B tools/pack_web.py` refreshes the committed bundle after editing browser assets; normal builds refresh it automatically, and `--verify` detects a stale bundle. Deployments use compressed SCP while retaining binary hash verification.
 
 `make check` is the lightweight source/unit gate: formatting, Python/browser syntax, serial browser unit tests, documentation and tooling tests. It starts no application Go suite, database, real browser or deliberate timeout fixture. Preview its exact scope with `python3 -B tools/check.py --plan`. Broad checks are currently paused; use focused tests until explicitly resumed.
 
@@ -63,7 +63,9 @@ Deploy to the Linux host with:
 make deploy
 ```
 
-The target detects the server architecture over SSH, builds a static Linux executable, and uses SCP to install under `/home/exedev/teleport` as `exedev@teleport.engineering`. Cross-building from macOS requires Zig or a running Docker installation; native Linux builds use the local compiler. Remote deployment requires Python 3, PostgreSQL 16+ server binaries and existing SSH authentication/host-key trust. It retains a private socket-only cluster below the deployment directory and an owner-only `database.json`. Override `DEPLOY_HOST`, `DEPLOY_DIR` (beneath `/home/exedev`), `DEPLOY_BUILDER` or `DEPLOY_ADDR` when needed.
+The target detects the server architecture over SSH, builds a static Linux executable, and uses SCP to install under `/home/exedev/teleport` as `exedev@teleport.engineering`. The Go toolchain cross-builds for Linux directly. Remote deployment requires Python 3, PostgreSQL 16+ server binaries and existing SSH authentication/host-key trust. It retains a private socket-only cluster below the deployment directory and an owner-only `database.json`. Override `DEPLOY_HOST`, `DEPLOY_DIR` (beneath `/home/exedev`), or `DEPLOY_ADDR` when needed.
+
+Server-side JavaScript jobs have been retired. Before upgrading from a release with that feature, stop and reconcile any active or unknown script jobs using that release. The upgrade retains their history.
 
 First deployment creates a random 256-bit admin password and initializes the database offline using `tp init -admin-password-stdin`. Initial credentials are stored in `/home/exedev/teleport/admin.json` and copied to ignored `.deploy/teleport.engineering.json`; both files have mode `0600`. Later deployments retain the database and credentials. A pre-existing database without deployment credentials causes a safe failure rather than a password reset.
 

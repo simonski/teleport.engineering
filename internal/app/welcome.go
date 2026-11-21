@@ -81,7 +81,7 @@ func welcomeOperations(st *model.State, a model.Account, operation string, raw j
 		if err := parse(raw, &in); err != nil {
 			return nil, false, err
 		}
-		if a.ServiceSessionID != "" || a.ServiceRunID != "" {
+		if a.ServiceSessionID != "" {
 			return nil, false, failure(403, "service_scope", "Only a human can change the default harness")
 		}
 		if in.ExpectedVersion != w.Version {

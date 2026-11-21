@@ -25,11 +25,6 @@ func freezeAttribution(st *model.State, a model.Account, project int64, ticketID
 				out.InitiatorID = parent.Creator
 			}
 		}
-	case a.ServiceRunID != "":
-		out.CallerKind = "automation"
-		out.CallerID = a.ServiceRunID
-		out.CallerCallID = a.ServiceCallID
-		out.InitiatorID = a.ID
 	default:
 		out.CallerKind = "human"
 		out.CallerID = a.ID

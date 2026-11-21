@@ -21,7 +21,6 @@ import (
 
 	"teleport/internal/app"
 	"teleport/internal/localruntime"
-	"teleport/internal/scriptruntime"
 	"teleport/internal/server"
 	teleportskill "teleport/internal/skills/teleport"
 	"teleport/internal/store"
@@ -70,16 +69,6 @@ func run(args []string) error {
 	}
 	if command == "import" {
 		return captureText(args[1:], os.Stdin, os.Stdout, os.Stderr)
-	}
-	if command == "_script-run" {
-		flags := flag.NewFlagSet(command, flag.ContinueOnError)
-		config := flags.String("config", "", "owned script configuration")
-		if err := flags.Parse(args[1:]); err != nil {
-			return err
-		}
-		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer cancel()
-		return scriptruntime.RunFile(ctx, *config)
 	}
 	if command == "_codex-session" {
 		flags := flag.NewFlagSet(command, flag.ContinueOnError)
@@ -334,6 +323,11 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
+		for _, run := range initialState.ScriptRuns {
+			if run.Unresolved() {
+				return errors.New("stop and reconcile legacy JavaScript jobs using the previous release before starting this server")
+			}
+		}
 		service := app.New(db)
 		if *runtimeRoot == "" {
 			*runtimeRoot = filepath.Join(home, ".teleport", "runtime", initialState.InstallationID[:16])
@@ -368,9 +362,6 @@ func run(args []string) error {
 				case <-stopCtx.Done():
 					return
 				case <-ticker.C:
-					if err := service.PumpScripts(stopCtx); err != nil && stopCtx.Err() == nil {
-						slog.Error("script reconciliation failed", "error", err)
-					}
 					if err := service.PumpLocal(stopCtx); err != nil && stopCtx.Err() == nil {
 						slog.Error("local runtime reconciliation failed", "error", err)
 					}

@@ -56,7 +56,7 @@ The default PostgreSQL browser suite provisions a disposable socket-only cluster
 
 `make build` always creates a new build identity. `python3 -B tools/build.py --reuse` reuses an artifact only when source and embedded bytes, module files/replacements, toolchain, target, flags, Git identity and binary hash match. PostgreSQL checks use this mode. Workspace/overlay builds disable reuse. `make sbom` caches the Go inventory with a content fingerprint, verifies browser assets and runtime licenses again, and refreshes source identity, timestamp and serial number. `python3 -B tools/sbom.py --refresh` forces inventory regeneration. Remove `.cache/tools` to clear these caches.
 
-Normal native/Linux builds use size-optimized C flags, stripped native debug data and the committed compressed web bundle; `make build-debug` preserves debugging data. Builds refresh the bundle from `internal/server/web/`; `python3 -B tools/pack_web.py --verify` detects stale assets. Deployment SCP uses transport compression, and verifies the uncompressed executable hash on the target.
+Normal native/Linux builds use pure Go, stripped debug data and the committed compressed web bundle; `make build-debug` preserves debugging data. Builds refresh the bundle from `internal/server/web/`; `python3 -B tools/pack_web.py --verify` detects stale assets. Deployment SCP uses transport compression, and verifies the uncompressed executable hash on the target.
 
 ## Coding Style & Naming Conventions
 

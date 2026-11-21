@@ -39,7 +39,7 @@ func (s *Service) installedSkillCall(ctx context.Context, token, op string, raw 
 	if err != nil {
 		return nil, err
 	}
-	if !a.Administrator || a.ServiceRunID != "" || a.ServiceSessionID != "" {
+	if !a.Administrator || a.ServiceSessionID != "" {
 		return nil, failure(403, "administrator_required", "Skill curation requires an administrator")
 	}
 	if len(st.Accounts) > 1 {

@@ -34,7 +34,7 @@ type AgentUsageList struct {
 }
 
 func agentUsageCall(st *model.State, a model.Account, operation string, raw json.RawMessage) (any, bool, error) {
-	if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+	if a.ServiceSessionID != "" {
 		return nil, false, failure(403, "human_required", "A human account is required")
 	}
 	if operation == "listAgentUsages" {

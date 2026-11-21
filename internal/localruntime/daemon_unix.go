@@ -342,7 +342,7 @@ func (d *daemon) call(in Request) Response {
 		return Response{Error: "runtime_shutdown_pending"}
 	}
 	if in.Operation == "ping" {
-		return Response{Generation: d.generation, ScriptRuntime: true}
+		return Response{Generation: d.generation}
 	}
 	if in.Operation == "list" {
 		items := []Status{}
@@ -455,7 +455,7 @@ func (d *daemon) launch(in *Launch) Response {
 	if in == nil || !sessionID.MatchString(in.ID) || len(in.LaunchID) != 64 || !filepath.IsAbs(in.Program) || !filepath.IsAbs(in.Cwd) || !validSize(in.Cols, in.Rows) {
 		return Response{Error: "invalid_launch"}
 	}
-	if in.Script != strings.HasPrefix(in.ID, "J") || in.Script && in.Native {
+	if in.Script || strings.HasPrefix(in.ID, "J") {
 		return Response{Error: "invalid_launch_kind"}
 	}
 	client := New(d.root, "")
@@ -475,19 +475,14 @@ func (d *daemon) launch(in *Launch) Response {
 	}
 	active := 0
 	for _, e := range d.entries {
-		if e.Script == in.Script && e.State != "exited" && e.State != "failed" {
+		if !e.Script && e.State != "exited" && e.State != "failed" {
 			active++
 		}
 	}
-	limit := 16
-	if in.Script {
-		limit = 4
-	}
-	if active >= limit || len(d.entries) >= 1000 {
+	if active >= 16 || len(d.entries) >= 1000 {
 		return Response{Error: "runtime_capacity_exhausted"}
 	}
 	e := &entry{Status: Status{ID: in.ID, LaunchID: in.LaunchID, Generation: d.generation, State: "starting", Cols: in.Cols, Rows: in.Rows, StartedAt: time.Now().UTC()}, Fingerprint: fingerprint, Receipts: map[int64]receipt{}}
-	e.Script = in.Script
 	d.entries[in.ID] = e
 	if in.Native {
 		e.Native = true

@@ -26,7 +26,7 @@ func ticketPrompt(st *model.State, a model.Account, raw json.RawMessage) (any, b
 	if err := parse(raw, &in); err != nil {
 		return nil, false, err
 	}
-	if a.ServiceSessionID != "" || a.ServiceRunID != "" {
+	if a.ServiceSessionID != "" {
 		return nil, false, failure(403, "human_required", "Prompt inspection requires a human account")
 	}
 	t, err := ticketFor(st, a, in.ID, "Viewer")

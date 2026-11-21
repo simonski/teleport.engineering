@@ -107,7 +107,7 @@ func googleEnrollmentView(st *model.State, row model.GoogleEnrollment) GoogleEnr
 }
 
 func googleAdminCall(st *model.State, a model.Account, operation string, raw json.RawMessage) (any, bool, error) {
-	if !a.Administrator || a.ServiceRunID != "" || a.ServiceSessionID != "" {
+	if !a.Administrator || a.ServiceSessionID != "" {
 		return nil, false, failure(403, "forbidden", "Google sign-in administration requires a human installation administrator")
 	}
 	c := st.GoogleSSO

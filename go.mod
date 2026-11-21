@@ -3,7 +3,6 @@ module teleport
 go 1.27.3
 
 require (
-	github.com/buke/quickjs-go v0.7.7
 	github.com/coder/websocket v1.8.15
 	github.com/creack/pty v1.1.24
 	github.com/jackc/pgx/v5 v5.12.0

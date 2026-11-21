@@ -58,11 +58,7 @@ func TestPersonalProjectProvisioningAndAdministratorPrivacy(t *testing.T) {
 		if st.LocalSessions == nil {
 			st.LocalSessions = map[string]model.LocalSession{}
 		}
-		if st.ScriptRuns == nil {
-			st.ScriptRuns = map[string]model.ScriptRun{}
-		}
 		st.LocalSessions["private-session"] = model.LocalSession{ID: "private-session", Number: 1, Creator: "other", ProjectID: p.ID, TicketID: story.ID, Harness: "codex", State: "exited", CreatedAt: time.Now().UTC()}
-		st.ScriptRuns["private-run"] = model.ScriptRun{ID: "private-run", Number: 1, Creator: "other", Projects: []int64{p.ID}, Source: "Private script", State: "running"}
 		return true, nil
 	}); err != nil {
 		t.Fatal(err)
@@ -81,9 +77,6 @@ func TestPersonalProjectProvisioningAndAdministratorPrivacy(t *testing.T) {
 	if sessions := call(t, svc, admin, "listSessions", app.ListInput{}).(app.LocalSessionPage); len(sessions.Items) != 0 {
 		t.Fatal("other personal project's sessions disclosed", sessions)
 	}
-	if runs := call(t, svc, admin, "listScriptRuns", app.ListInput{}).(app.ScriptPage); len(runs.Items) != 1 || runs.Items[0].ID != "private-run" {
-		t.Fatal("administrator operational metadata missing", runs)
-	}
 	if usage := call(t, svc, admin, "listUsageBreakdown", app.UsageBreakdownInput{GroupBy: "project", Window: "all"}).(app.UsageBreakdownPage); len(usage.Items) != 0 {
 		t.Fatal("other personal project's usage disclosed", usage)
 	}
@@ -95,7 +88,7 @@ func TestPersonalProjectProvisioningAndAdministratorPrivacy(t *testing.T) {
 	for _, req := range []struct {
 		op    string
 		value any
-	}{{"getTicket", app.IDInput{ID: story.ID}}, {"listTickets", app.ListInput{ProjectID: p.ID}}, {"getGraph", app.GraphInput{ProjectID: p.ID}}, {"getIdea", app.IdeaInput{ID: idea.ID}}, {"getIdeaHistory", app.IdeaInput{ID: idea.ID}}, {"getUsageAttribution", app.SessionIDInput{ID: "private-session"}}, {"getScriptRun", app.ScriptIDInput{ID: "private-run"}}, {"transferTicket", app.TransferInput{ID: story.ID, ExpectedVersion: story.Version, DestinationProjectID: adminProjects[0].ID}}, {"previewProjectRemoval", app.ProjectRemovalInput{ID: p.ID}}, {"configureLocalRepository", app.RepositoryInput{ProjectID: p.ID, ExpectedVersion: p.Version, Repository: "/not-granted"}}} {
+	}{{"getTicket", app.IDInput{ID: story.ID}}, {"listTickets", app.ListInput{ProjectID: p.ID}}, {"getGraph", app.GraphInput{ProjectID: p.ID}}, {"getIdea", app.IdeaInput{ID: idea.ID}}, {"getIdeaHistory", app.IdeaInput{ID: idea.ID}}, {"getUsageAttribution", app.SessionIDInput{ID: "private-session"}}, {"transferTicket", app.TransferInput{ID: story.ID, ExpectedVersion: story.Version, DestinationProjectID: adminProjects[0].ID}}, {"previewProjectRemoval", app.ProjectRemovalInput{ID: p.ID}}, {"configureLocalRepository", app.RepositoryInput{ProjectID: p.ID, ExpectedVersion: p.Version, Repository: "/not-granted"}}} {
 		raw, _ := json.Marshal(req.value)
 		if _, err := svc.Call(context.Background(), admin, req.op, raw); err == nil {
 			t.Fatalf("other administrator accessed personal project via %s", req.op)

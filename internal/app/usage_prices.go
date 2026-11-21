@@ -232,7 +232,7 @@ func (s *Service) usagePriceCall(ctx context.Context, token, op string, raw json
 		if e != nil {
 			return false, e
 		}
-		if !a.Administrator || a.ServiceRunID != "" || a.ServiceSessionID != "" {
+		if !a.Administrator || a.ServiceSessionID != "" {
 			return false, failure(403, "administrator_required", "Only an administrator may publish prices")
 		}
 		key, hash, prior, e := receipt(st, a, op, in.RequestID, in)

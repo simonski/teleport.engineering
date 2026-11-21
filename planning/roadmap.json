@@ -107,7 +107,7 @@
     {
       "key": "dedicated-sessions", "phase": "mvp",
       "title": "Provide dedicated stoppable harness sessions and an agent monitor",
-      "scope": ["Display detected harness sessions inside and outside wrappers in a parent/process hierarchy, including the current shell where detectable.", "Make owned wrapped sessions clickable to teleport, similar to the JavaScript console.", "A dedicated session selects harness, model and thinking, preloads allowed/denied rules and the tp skill, and offers a truthful stop control."],
+      "scope": ["Display detected harness sessions inside and outside wrappers in a parent/process hierarchy, including the current shell where detectable.", "Make owned wrapped sessions clickable to teleport, similar to the tp command console.", "A dedicated session selects harness, model and thinking, preloads allowed/denied rules and the tp skill, and offers a truthful stop control."],
       "acceptance": ["Owned sessions can be inspected, reattached and stopped without duplicate harness launches.", "Externally detected sessions are clearly distinguished from controllable owned wrappers; detection alone grants no takeover rights.", "MVP selects native Codex; other provider adapters remain deferred."]
     },
     {
@@ -138,7 +138,7 @@
     {
       "key": "user-inspection", "phase": "later",
       "title": "Provide scoped administrator inspection of account history",
-      "scope": ["Keep user inspection outside MVP. Let authorized administrators inspect users, account changes and permitted email-delivery metadata.", "Respect existing privacy boundaries for private script, idea and session content."],
+      "scope": ["Keep user inspection outside MVP. Let authorized administrators inspect users, account changes and permitted email-delivery metadata.", "Respect existing privacy boundaries for private idea and session content."],
       "acceptance": ["Inspection is role-gated, paginated and audited.", "A user's private content is not exposed merely because an administrator can inspect operational account history.", "Sensitive credential and reset material is never displayed."]
     },
     {

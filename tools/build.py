@@ -34,7 +34,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--install-only", action="store_true")
     parser.add_argument("--reuse", action="store_true", help="Reuse a verified binary with identical inputs and source identity")
-    parser.add_argument("--debug", action="store_true", help="Retain native debug symbols and use ordinary C optimization")
+    parser.add_argument("--debug", action="store_true", help="Retain Go debug symbols")
     args = parser.parse_args()
     binary = ROOT / "bin" / "tp"
     manifest = ROOT / ".cache/tools/build.json"
@@ -45,7 +45,8 @@ def main():
 def build(args, binary, manifest):
     if not args.install_only:
         subprocess.run([sys.executable, "-B", str(ROOT / "tools/pack_web.py")], cwd=ROOT, check=True)
-        identity = source_identity(ROOT, "build-v3-packed-debug" if args.debug else "build-v3-packed-size-optimized")
+        environment = dict(os.environ, CGO_ENABLED="0")
+        identity = source_identity(ROOT, "build-v4-pure-go-debug" if args.debug else "build-v4-pure-go")
         # Metadata changes on commits or dirty transitions even if Go inputs do not.
         identity = identity + local_version(ROOT, 0) if identity else None
         if args.reuse and verified_artifact(manifest, identity, binary):
@@ -55,8 +56,6 @@ def build(args, binary, manifest):
         count = int(counter.read_text()) + 1 if counter.exists() else 1
         build_version = os.environ.get("TELEPORT_BUILD_VERSION") or local_version(ROOT, count)
         binary.parent.mkdir(exist_ok=True)
-        environment = dict(os.environ)
-        environment.setdefault("CGO_CFLAGS", "-O2 -g" if args.debug else "-Os -g0")
         linker_flags = f"-X main.version={build_version}" if args.debug else f"-s -w -X main.version={build_version}"
         subprocess.run(["go", "build", "-trimpath", "-ldflags", linker_flags, "-o", str(binary), "./cmd/tp"], cwd=ROOT, env=environment, check=True)
         counter.write_text(str(count))

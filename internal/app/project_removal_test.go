@@ -17,7 +17,7 @@ func removalRaw(id int64, revision int64, confirm bool) json.RawMessage {
 func TestProjectRemovalAuthorizationConfirmationAndCleanup(t *testing.T) {
 	admin := model.Account{ID: "a", Administrator: true}
 	st := removalFixture()
-	for _, actor := range []model.Account{{ID: "x"}, {ID: "a", Administrator: true, ServiceRunID: "script"}, {ID: "a", Administrator: true, ServiceSessionID: "session"}} {
+	for _, actor := range []model.Account{{ID: "x"}, {ID: "a", Administrator: true, ServiceSessionID: "session"}} {
 		if _, _, err := removeProject(st, actor, removalRaw(1, 7, true), false); err == nil {
 			t.Fatal("unauthorized removal")
 		}

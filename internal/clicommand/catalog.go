@@ -123,13 +123,6 @@ saveCurrentLocation preferences location
 setExecutionMode system execution
 setHandbrake system handbrake
 runDemoStage demo stage
-getScriptBindings script bindings
-startScriptRun script run
-listScriptRuns script ls
-getScriptRun script show
-stopScriptRun script stop
-confirmScriptCall script confirm
-scriptCall script call
 getWelcomeSetup welcome show
 checkProjectAvailability welcome availability
 saveWelcomeSetup welcome save

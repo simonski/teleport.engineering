@@ -211,7 +211,7 @@ func (s *Service) projectDirectory(ctx context.Context, token string, raw json.R
 
 func directoryActor(st *model.State, token string) (model.Account, error) {
 	a, err := actor(st, token)
-	if err == nil && (a.ServiceRunID != "" || a.ServiceSessionID != "") {
+	if err == nil && (a.ServiceSessionID != "") {
 		err = failure(403, "service_scope", "Scoped execution credentials cannot read project aggregates")
 	}
 	return a, err

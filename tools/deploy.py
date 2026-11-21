@@ -4,10 +4,8 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
-import platform
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,38 +26,16 @@ def validate_target(host,directory):
     return str(path)
 
 
-def linux_build(arch,builder="auto"):
+def linux_build(arch):
     if arch not in ("amd64","arm64"):
         raise ValueError("Supported Linux architectures: amd64, arm64")
     output=ROOT/"bin/deploy"/("linux-"+arch)/"tp"
     output.parent.mkdir(parents=True,exist_ok=True)
     version=os.environ.get("TELEPORT_BUILD_VERSION") or local_version(ROOT,0).replace("dev.0","deploy")
-    environment=dict(os.environ,GOOS="linux",GOARCH=arch,CGO_ENABLED="1")
-    environment.setdefault("CGO_CFLAGS","-Os -g0")
-    native=platform.system()=="Linux" and ARCHES.get(platform.machine())==arch
-    chosen=("native" if native else "zig" if shutil.which("zig") else "docker") if builder=="auto" else builder
+    environment=dict(os.environ,GOOS="linux",GOARCH=arch,CGO_ENABLED="0")
     subprocess.run([sys.executable,"-B",str(ROOT/"tools/pack_web.py")],cwd=ROOT,check=True)
-    flags=["-trimpath","-tags","netgo,osusergo","-ldflags",f"-s -w -X main.version={version} -linkmode external -extldflags -static"]
-    if chosen=="zig":
-        zig=shutil.which("zig")
-        if not zig:
-            raise RuntimeError("Install Zig or select --builder docker for Linux CGO cross-compilation")
-        target=("x86_64" if arch=="amd64" else "aarch64")+"-linux-musl"
-        environment.update(CC=shlex.quote(zig)+" cc -target "+target,CXX=shlex.quote(zig)+" c++ -target "+target)
-        command=["go","build",*flags,"-o",str(output),"./cmd/tp"]
-    elif chosen=="native" and native:
-        command=["go","build",*flags,"-o",str(output),"./cmd/tp"]
-    elif chosen=="docker":
-        if not shutil.which("docker"):
-            raise RuntimeError("Linux CGO build requires Zig, Docker, or a native Linux compiler")
-        cache=ROOT/".cache/tools/deploy";cache.mkdir(parents=True,exist_ok=True)
-        command=["docker","run","--rm","--platform","linux/"+arch,"--user",f"{os.getuid()}:{os.getgid()}",
-                 "-v",str(ROOT)+":/src:ro","-v",str(output.parent)+":/out","-v",str(cache)+":/cache","-w","/src",
-                 "-e","CGO_ENABLED=1","-e","CGO_CFLAGS","-e","GOCACHE=/cache/build","-e","GOMODCACHE=/cache/mod","-e","GOPATH=/cache/gopath",
-                 "golang:1.27.3-bookworm","go","build",*flags,"-o","/out/tp","./cmd/tp"]
-    else:
-        raise RuntimeError("Native builds require Linux with the target architecture")
-    subprocess.run(command,cwd=ROOT,env=environment,check=True,timeout=600)
+    subprocess.run(["go","build","-trimpath","-ldflags",f"-s -w -X main.version={version}","-o",str(output),"./cmd/tp"],
+                   cwd=ROOT,env=environment,check=True,timeout=600)
     header=output.read_bytes()[:20]
     machine=int.from_bytes(header[18:20],"little")
     if header[:4]!=b"\x7fELF" or machine!={"amd64":62,"arm64":183}[arch]:
@@ -73,7 +49,6 @@ def main():
     parser.add_argument("--host",default=os.environ.get("DEPLOY_HOST","exedev@teleport.engineering"))
     parser.add_argument("--directory",default=os.environ.get("DEPLOY_DIR","/home/exedev/teleport"))
     parser.add_argument("--arch",choices=("amd64","arm64"))
-    parser.add_argument("--builder",choices=("auto","native","zig","docker"),default=os.environ.get("DEPLOY_BUILDER","auto"))
     parser.add_argument("--addr",default=os.environ.get("DEPLOY_ADDR","0.0.0.0:8000"))
     parser.add_argument("--public-hosts",default=os.environ.get("DEPLOY_PUBLIC_HOSTS",""),help="Additional comma-separated HTTPS hostnames")
     parser.add_argument("--build-only",action="store_true")
@@ -110,7 +85,7 @@ def main():
         arch=actual
     if not arch:
         parser.error("--build-only requires --arch")
-    binary,version=linux_build(arch,args.builder)
+    binary,version=linux_build(arch)
     if args.build_only:
         return
     release=f"{int(time.time())}-{hashlib.sha256(binary.read_bytes()).hexdigest()[:12]}"

@@ -111,7 +111,6 @@ func InitializeWithOptions(ctx context.Context, db *store.Store, options Initial
 
 type Service struct {
 	skillMu        sync.Mutex
-	scriptMu       sync.Mutex
 	localEndpoint  string
 	localMu        sync.Mutex
 	nativeMu       sync.Mutex
@@ -133,9 +132,6 @@ type LoginResult struct {
 }
 
 func actor(st *model.State, token string) (model.Account, error) {
-	if scoped, ok := scriptActor(st, token); ok {
-		return scoped, nil
-	}
 	if scoped, ok := localActor(st, token); ok {
 		return scoped, nil
 	}
@@ -164,23 +160,6 @@ func (s *Service) Call(ctx context.Context, token, operation string, raw json.Ra
 			return nil, err
 		}
 		return AuthCapabilities{Google: st.GoogleSSO.Enabled && publicGoogleSSO(st.GoogleSSO).Configured}, nil
-	}
-	if scriptOperation(operation) {
-		return s.scriptCall(ctx, token, operation, raw)
-	}
-	if token != "" {
-		snapshot, err := s.db.Read(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if scoped, ok := scriptActor(snapshot, token); ok {
-			if operation == "login" {
-				return nil, failure(403, "script_scope", "Script credentials cannot sign in as a human")
-			}
-			if err := checkScriptDispatch(ctx, snapshot, &scoped, operation, raw); err != nil {
-				return nil, err
-			}
-		}
 	}
 	if operation == "login" {
 		if token != "" {
@@ -242,9 +221,6 @@ func (s *Service) Call(ctx context.Context, token, operation string, raw json.Ra
 			return false, err
 		}
 		collections(st)
-		if err := checkScriptDispatch(ctx, st, &a, operation, raw); err != nil {
-			return false, err
-		}
 		if a.ServiceSessionID != "" && !contains([]string{"getTicket", "listTickets", "listProjects", "listWorkflows", "getWorkflow", "getTicketAgreements", "listTicketHistory", "submitTicketProposal", "getProposalRunContext", "reportProposalRunUsage"}, operation) {
 			return false, failure(403, "agent_scope", "This managed credential permits scoped context reads only")
 		}

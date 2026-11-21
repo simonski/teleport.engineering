@@ -102,7 +102,7 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 			}
 			profile, ok := identity.(map[string]any)
 			account, accountOK := profile["account"].(model.Account)
-			if !ok || !accountOK || account.ServiceSessionID != "" || account.ServiceRunID != "" {
+			if !ok || !accountOK || account.ServiceSessionID != "" {
 				writeError(w, &app.Error{Status: 403, Code: "service_scope", Message: "The terminal requires a human session"})
 				return
 			}

@@ -183,7 +183,7 @@ func (s *Service) localSnapshot(ctx context.Context, token, id string) (*model.S
 	if err != nil {
 		return nil, a, model.LocalSession{}, err
 	}
-	if a.ServiceSessionID != "" || a.ServiceRunID != "" {
+	if a.ServiceSessionID != "" {
 		return nil, a, model.LocalSession{}, failure(403, "service_scope", "Service credentials cannot control terminals")
 	}
 	if id == "" {
@@ -293,7 +293,7 @@ func (s *Service) localCall(ctx context.Context, token, operation string, raw js
 		if err = parse(raw, &in); err != nil {
 			return nil, err
 		}
-		if a.ServiceSessionID != "" || a.ServiceRunID != "" {
+		if a.ServiceSessionID != "" {
 			return nil, failure(403, "service_scope", "Only the initiating human can remove a console reference")
 		}
 		if !in.Confirm {
@@ -304,7 +304,7 @@ func (s *Service) localCall(ctx context.Context, token, operation string, raw js
 			if err != nil {
 				return false, err
 			}
-			if current.ServiceSessionID != "" || current.ServiceRunID != "" {
+			if current.ServiceSessionID != "" {
 				return false, failure(403, "service_scope", "Only the initiating human can remove a console reference")
 			}
 			row, ok := st.LocalSessions[in.ID]

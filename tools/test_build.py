@@ -15,13 +15,13 @@ class BuildIdentityTest(unittest.TestCase):
         import build as build_tool
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            with patch.object(build_tool, "ROOT", root), patch.object(build_tool, "source_identity", return_value="identity") as identity, patch.object(build_tool, "local_version", return_value="fixture"), patch.object(build_tool, "record_artifact"), patch.object(build_tool.subprocess, "run") as run, patch.dict(os.environ, {"CGO_CFLAGS": "-O1"}):
+            with patch.object(build_tool, "ROOT", root), patch.object(build_tool, "source_identity", return_value="identity") as identity, patch.object(build_tool, "local_version", return_value="fixture"), patch.object(build_tool, "record_artifact"), patch.object(build_tool.subprocess, "run") as run, patch.dict(os.environ, {"CGO_ENABLED": "1"}):
                 for debug in (False, True):
                     build_tool.build(Namespace(install_only=False, reuse=False, debug=debug), root / "bin/tp", root / "manifest")
                 builds = [call for call in run.call_args_list if call.args[0][0] == "go"]
                 self.assertIn("-s -w", builds[0].args[0][4])
                 self.assertNotIn("-s -w", builds[1].args[0][4])
-                self.assertTrue(all(call.kwargs["env"]["CGO_CFLAGS"] == "-O1" for call in builds))
+                self.assertTrue(all(call.kwargs["env"]["CGO_ENABLED"] == "0" for call in builds))
                 self.assertNotEqual(identity.call_args_list[0].args[1], identity.call_args_list[1].args[1])
 
     @unittest.skipUnless(os.name == "posix", "POSIX permits a running executable's directory entry to be replaced")

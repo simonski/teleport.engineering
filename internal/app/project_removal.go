@@ -25,7 +25,7 @@ type ProjectRemovalPreview struct {
 }
 
 func removalPreview(st *model.State, a model.Account, id int64) (ProjectRemovalPreview, error) {
-	if !a.Administrator || a.ServiceSessionID != "" || a.ServiceRunID != "" {
+	if !a.Administrator || a.ServiceSessionID != "" {
 		return ProjectRemovalPreview{}, failure(403, "forbidden", "Only a human installation administrator can remove projects")
 	}
 	p, ok := st.Projects[id]
@@ -98,7 +98,7 @@ func removeProject(st *model.State, a model.Account, raw json.RawMessage, previe
 	}
 	for _, run := range st.ScriptRuns {
 		for _, id := range run.Projects {
-			if id == in.ID && run.State != "completed" && run.State != "failed" && run.State != "stopped" && run.State != "interrupted" {
+			if id == in.ID && run.Unresolved() {
 				return nil, false, failure(409, "active_script", "Stop and reconcile project scripts before removal")
 			}
 		}

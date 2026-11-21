@@ -76,7 +76,6 @@ type Request struct {
 type Response struct {
 	NativeFailure *NativeFailure  `json:"nativeFailure,omitempty"`
 	Turn          *NativeTurn     `json:"turn,omitempty"`
-	ScriptRuntime bool            `json:"scriptRuntime"`
 	RequestsGap   bool            `json:"requestsGap"`
 	Requests      []NativeRequest `json:"requests,omitempty"`
 	NativeReceipt *NativeReceipt  `json:"nativeReceipt,omitempty"`

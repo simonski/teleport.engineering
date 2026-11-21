@@ -20,7 +20,7 @@ func currentLocation(st *model.State, a model.Account) *model.RecentContext {
 }
 
 func saveCurrentLocation(st *model.State, a model.Account, raw json.RawMessage) (any, bool, error) {
-	if a.ServiceRunID != "" || a.ServiceSessionID != "" {
+	if a.ServiceSessionID != "" {
 		return nil, false, failure(403, "human_required", "Only an authenticated account owner may save navigation")
 	}
 	var in CurrentLocationInput

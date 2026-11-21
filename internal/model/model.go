@@ -6,8 +6,6 @@ const SchemaVersion = 1
 
 type Account struct {
 	ServiceSessionReadOnly bool   `json:"-"`
-	ServiceRunID           string `json:"-"`
-	ServiceCallID          string `json:"-"`
 	ServiceSessionID       string `json:"-"`
 	ServiceProjectID       int64  `json:"-"`
 	ID                     string `json:"id"`
