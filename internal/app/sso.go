@@ -7,9 +7,12 @@ import (
 	"net/mail"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"golang.org/x/text/cases"
 
 	"teleport/internal/model"
 )
@@ -231,10 +234,30 @@ func enrolGoogle(st *model.State, row *model.GoogleEnrollment, approver string) 
 	for st.Accounts[id].ID != "" {
 		id = "google-" + randomID()[:24]
 	}
-	a := model.Account{ID: id, Username: id}
+	a := model.Account{ID: id, Username: googleUsername(st, id, row.Email)}
 	st.Accounts[id] = a
 	ensurePersonalProject(st, a)
 	row.AccountID, row.ApprovedBy, row.ApprovedAt = id, approver, time.Now().UTC()
+}
+
+func googleUsername(st *model.State, accountID, email string) string {
+	at := strings.LastIndexByte(email, '@')
+	if at <= 0 {
+		return accountID
+	}
+	base := email[:at]
+	fold := cases.Fold()
+	used := make(map[string]bool, len(st.Accounts))
+	for id, account := range st.Accounts {
+		if id != accountID {
+			used[fold.String(account.Username)] = true
+		}
+	}
+	name := base
+	for suffix := 2; used[fold.String(name)]; suffix++ {
+		name = base + "-" + strconv.Itoa(suffix)
+	}
+	return name
 }
 
 // GoogleSignIn accepts only claims obtained by the HTTP handler directly from
@@ -285,6 +308,10 @@ func (s *Service) GoogleSignIn(ctx context.Context, version int64, subject, emai
 		account, ok := st.Accounts[row.AccountID]
 		if !ok || account.Suspended {
 			return false, failure(403, "account_unavailable", "This account cannot sign in")
+		}
+		if account.Username == account.ID {
+			account.Username = googleUsername(st, account.ID, email)
+			st.Accounts[account.ID] = account
 		}
 		token = newSignInSession(st, account)
 		return true, nil

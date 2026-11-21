@@ -34,7 +34,7 @@ func TestGoogleEnrollmentPoliciesAndAdministratorGrant(t *testing.T) {
 	if got := call(t, svc, "", "getAuthCapabilities", struct{}{}).(app.AuthCapabilities); !got.Google {
 		t.Fatal("anonymous sign-in capability was not published")
 	}
-	const email = "same@example.test"
+	const email = "simon.gauld@gmail.com"
 	signIn := func(subject, email, outcome string, version int64) string {
 		t.Helper()
 		token, got, err := svc.GoogleSignIn(ctx, version, subject, email)
@@ -68,8 +68,12 @@ func TestGoogleEnrollmentPoliciesAndAdministratorGrant(t *testing.T) {
 	}
 	promoted := call(t, svc, admin, "grantGoogleAdministrator", decision).(app.GoogleEnrollmentView)
 	session := call(t, svc, token, "getSession", struct{}{}).(map[string]any)
-	if !promoted.Administrator || !session["account"].(model.Account).Administrator {
+	account := session["account"].(model.Account)
+	if !promoted.Administrator || !account.Administrator {
 		t.Fatal("explicit administrator grant did not take effect")
+	}
+	if account.Username != "simon.gauld" || account.ID != enrolled.AccountID {
+		t.Fatal("Google username should use the enrolled address and preserve the account ID")
 	}
 	afterGrant, err := db.Read(ctx)
 	if err != nil {
@@ -99,6 +103,9 @@ func TestGoogleEnrollmentPoliciesAndAdministratorGrant(t *testing.T) {
 	if secondAccount.Administrator || secondAccount.ID == enrolled.AccountID {
 		t.Fatal("auto-enrolled account inherited another account's identity or role")
 	}
+	if secondAccount.Username != "simon.gauld-2" {
+		t.Fatalf("duplicate email local part should receive a distinct username, got %q", secondAccount.Username)
+	}
 	st, err = db.Read(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -111,6 +118,19 @@ func TestGoogleEnrollmentPoliciesAndAdministratorGrant(t *testing.T) {
 	}
 	if personal != 1 {
 		t.Fatalf("enrollment should atomically create one Personal project, got %d", personal)
+	}
+	if err := db.Update(ctx, func(st *model.State) (bool, error) {
+		legacy := st.Accounts[account.ID]
+		legacy.Username = legacy.ID
+		st.Accounts[account.ID] = legacy
+		return true, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	upgradedToken := signIn("first", email, "", config.Version)
+	upgraded := call(t, svc, upgradedToken, "getSession", struct{}{}).(map[string]any)["account"].(model.Account)
+	if upgraded.Username != "simon.gauld" || upgraded.ID != account.ID || !upgraded.Administrator {
+		t.Fatal("legacy Google username update changed the account identity or administrator role")
 	}
 	call(t, svc, admin, "disableGoogleSSO", app.GoogleSSOVersion{ExpectedVersion: config.Version})
 	if _, _, err := svc.GoogleSignIn(ctx, config.Version, "second", email); err == nil {

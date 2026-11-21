@@ -33,7 +33,10 @@ function bindGoogleLogin() {
       const settings=await api('getAuthCapabilities');
       if(!section.isConnected||!settings.google)return;
       const link=document.createElement('a');
-      link.className='secondary google-sign-in';link.href='/auth/google/start';link.textContent='Sign in with Google';
+      link.className='google-sign-in';link.href='/auth/google/start';
+      const badge=document.createElement('img');
+      badge.src='/google-sign-in.png';badge.alt='Sign in with Google';badge.width=180;badge.height=40;
+      link.append(badge);
       section.append(link);
     }catch(error){if(!error.staleInteraction&&section.isConnected&&!screen)notice('Google sign-in status is unavailable.');}
   }
