@@ -21,6 +21,8 @@ Run `make sbom` to generate `sbom.cdx.json`.
 
 Release builds use pure Go, stripped debugging information and a compressed embedded web bundle. `make build-debug` retains native debug information when needed. `python3 -B tools/pack_web.py` refreshes the committed bundle after editing browser assets; normal builds refresh it automatically, and `--verify` detects a stale bundle. Deployments use compressed SCP while retaining binary hash verification.
 
+After initialization, `make run PORT=9999` builds and serves the local installation. Use `bin/tp serve -p PORT` to serve an existing build on a loopback port.
+
 `make check` is the lightweight source/unit gate: formatting, Python/browser syntax, serial browser unit tests, documentation and tooling tests. It starts no application Go suite, database, real browser or deliberate timeout fixture. Preview its exact scope with `python3 -B tools/check.py --plan`. Broad checks are currently paused; use focused tests until explicitly resumed.
 
 Use `make check-go` (or `make test`) for normal Go tests with disposable PostgreSQL, `make check-integration` for full vet plus Go/database, cross-language history, browser-driver and timeout/cleanup checks, and `make race-check` (also `make check-race`) for explicit race instrumentation. Go checks use low scheduling priority, two execution threads by default and one package at a time; an explicit `GOMAXPROCS` is preserved. `make check-full` runs lightweight, integration and race checks in sequence for a deliberate local/release gate. No GitHub Actions are configured.
@@ -34,6 +36,8 @@ An installed Teleport skill using the previous command name needs an explicit up
 The Harness sessions dialog lists Teleport sessions and recognized same-user host harness processes. Administrators in single-user mode can inspect a non-Teleport process and explicitly request a stop or force stop; a requested signal does not by itself confirm exit.
 
 Bare `tp` or `tp help` lists the top-level commands. Use `tp agent` (or `tp help agent`) to list that command's actions, and `tp agent ls -h` for typed flags. `tp commands` prints the full catalogue; add `-json` for machine-readable output. Examples: `tp project ls`, `tp ticket show 35`, `tp agent ls -project 2`, `tp idea ls`, and `tp workflow ls`. Agent listing reads accessible harness sessions; starting one remains explicit. Existing API-style commands such as `tp listTickets -data '{"projectId":2,"limit":50}'` keep working.
+
+`tp version` prints the CLI version. `tp version -component server` prints the version of the server packaged in the same executable. Server-backed commands report major or minor version mismatches on stderr and keep JSON output on stdout.
 
 New projects record a project root, defaulting to `~/code/teleport`; it can be changed during creation. The root does not itself grant execution access. An administrator can grant the local repository in project settings, and worktree storage is chosen automatically. Existing bindings retain their storage location. In single-user local mode, independent harness consoles run in the selected project root using the harness’s native permissions; ticket work retains its own worktree.
 

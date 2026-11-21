@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from build import install_artifact, local_version
+from build import install_artifact, source_revision
 
 
 class BuildIdentityTest(unittest.TestCase):
@@ -15,7 +15,7 @@ class BuildIdentityTest(unittest.TestCase):
         import build as build_tool
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            with patch.object(build_tool, "ROOT", root), patch.object(build_tool, "source_identity", return_value="identity") as identity, patch.object(build_tool, "local_version", return_value="fixture"), patch.object(build_tool, "record_artifact"), patch.object(build_tool.subprocess, "run") as run, patch.dict(os.environ, {"CGO_ENABLED": "1"}):
+            with patch.object(build_tool, "ROOT", root), patch.object(build_tool, "source_identity", return_value="identity") as identity, patch.object(build_tool, "source_revision", return_value="fixture"), patch.object(build_tool, "component_versions", return_value={"CLI": "1.0.0", "Server": "2.0.0"}), patch.object(build_tool, "record_artifact"), patch.object(build_tool.subprocess, "run") as run, patch.dict(os.environ, {"CGO_ENABLED": "1"}):
                 for debug in (False, True):
                     build_tool.build(Namespace(install_only=False, reuse=False, debug=debug), root / "bin/tp", root / "manifest")
                 builds = [call for call in run.call_args_list if call.args[0][0] == "go"]
@@ -64,18 +64,18 @@ class BuildIdentityTest(unittest.TestCase):
             (folder / ".gitignore").write_text("bin/\n.build-count\n")
             git("add", ".")
             git("commit", "-m", "Initial fixture")
-            self.assertRegex(local_version(folder, 7), r"^0\.1\.0-dev\.7\+[0-9a-f]+$")
+            clean = source_revision(folder)
             source.write_text("changed\n")
-            self.assertTrue(local_version(folder, 8).endswith(".dirty"))
+            self.assertNotEqual(source_revision(folder), clean)
             git("checkout", "--", "source.txt")
             untracked = folder / "new-source.txt"
             untracked.write_text("new\n")
-            self.assertTrue(local_version(folder, 9).endswith(".dirty"))
+            self.assertNotEqual(source_revision(folder), clean)
             untracked.unlink()
             (folder / "bin").mkdir()
             (folder / "bin/tp").write_text("generated binary fixture")
             (folder / ".build-count").write_text("9")
-            self.assertFalse(local_version(folder, 10).endswith(".dirty"))
+            self.assertEqual(source_revision(folder), clean)
 
 
 if __name__ == "__main__":

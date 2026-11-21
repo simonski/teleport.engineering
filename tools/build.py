@@ -1,7 +1,9 @@
 """Build tp once with traceable local metadata; optionally install that artifact."""
 import argparse
+import hashlib
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -25,10 +27,18 @@ def install_artifact(binary, destination):
     finally:
         temporary.unlink(missing_ok=True)
 
-def local_version(root, count):
-    revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=root, text=True).strip()
-    dirty = subprocess.check_output(["git", "status", "--porcelain=v1", "--untracked-files=normal"], cwd=root, text=True).strip()
-    return f"0.1.0-dev.{count}+{revision}" + (".dirty" if dirty else "")
+def component_versions(root):
+    source = (root / "internal/version/version.go").read_text()
+    values = dict(re.findall(r'^\s*(CLI|Server)\s*=\s*"((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))"\s*$', source, re.M))
+    if values.keys() != {"CLI", "Server"}:
+        raise RuntimeError("Define the CLI and server semantic versions in internal/version/version.go")
+    return values
+
+
+def source_revision(root):
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root)
+    status = subprocess.check_output(["git", "status", "--porcelain=v1", "--untracked-files=normal"], cwd=root)
+    return hashlib.sha256(revision + b"\0" + status).hexdigest()
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -46,21 +56,22 @@ def build(args, binary, manifest):
     if not args.install_only:
         subprocess.run([sys.executable, "-B", str(ROOT / "tools/pack_web.py")], cwd=ROOT, check=True)
         environment = dict(os.environ, CGO_ENABLED="0")
-        identity = source_identity(ROOT, "build-v4-pure-go-debug" if args.debug else "build-v4-pure-go")
-        # Metadata changes on commits or dirty transitions even if Go inputs do not.
-        identity = identity + local_version(ROOT, 0) if identity else None
+        identity = source_identity(ROOT, "build-v5-semver-debug" if args.debug else "build-v5-semver")
+        identity = identity + source_revision(ROOT) if identity else None
         if args.reuse and verified_artifact(manifest, identity, binary):
             print("PASS: reused verified bin/tp (source, toolchain, target and flags unchanged)")
             return
         counter = ROOT / ".build-count"
         count = int(counter.read_text()) + 1 if counter.exists() else 1
-        build_version = os.environ.get("TELEPORT_BUILD_VERSION") or local_version(ROOT, count)
+        versions = component_versions(ROOT)
         binary.parent.mkdir(exist_ok=True)
-        linker_flags = f"-X main.version={build_version}" if args.debug else f"-s -w -X main.version={build_version}"
+        linker_flags = f"-X teleport/internal/version.BuildNumber={count}"
+        if not args.debug:
+            linker_flags = "-s -w " + linker_flags
         subprocess.run(["go", "build", "-trimpath", "-ldflags", linker_flags, "-o", str(binary), "./cmd/tp"], cwd=ROOT, env=environment, check=True)
         counter.write_text(str(count))
         record_artifact(manifest, identity, binary)
-        print(f"Built {binary.relative_to(ROOT)} ({build_version})")
+        print(f"Built {binary.relative_to(ROOT)} (CLI {versions['CLI']}, server {versions['Server']}, build {count})")
     else:
         env = subprocess.check_output(["go", "env", "GOBIN", "GOPATH"], text=True).splitlines()
         destination = Path(env[0] or str(Path(env[1].split(os.pathsep)[0]) / "bin"))

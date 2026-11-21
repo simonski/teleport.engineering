@@ -316,9 +316,10 @@ func runPersonaProposal(harness string, args []string, persona personaLaunch) er
 	if err = os.Remove(config); err != nil {
 		return errors.New("proposal session credential could not be protected")
 	}
+	client := apiClient{endpoint: endpoint, token: creds.Token, diagnostics: os.Stderr}
 	var context []byte
 	if persona.ProposalJob.PreviousID != "" {
-		context, err = requestOperation(endpoint, creds, "getProposalRunContext", []byte(`{}`))
+		context, err = client.operation("getProposalRunContext", []byte(`{}`))
 		if err != nil {
 			return fmt.Errorf("proposal context unavailable: %w", err)
 		}
@@ -367,7 +368,7 @@ func runPersonaProposal(harness string, args []string, persona personaLaunch) er
 	}
 	if usage != nil {
 		evidence, _ := json.Marshal(app.ProposalRunUsageInput{Usage: usage})
-		if _, e := requestOperation(endpoint, creds, "reportProposalRunUsage", evidence); e != nil {
+		if _, e := client.operation("reportProposalRunUsage", evidence); e != nil {
 			return fmt.Errorf("proposal usage recording failed: %w", e)
 		}
 	}
@@ -392,7 +393,7 @@ func runPersonaProposal(harness string, args []string, persona personaLaunch) er
 	if err != nil {
 		return err
 	}
-	if _, err = requestOperation(endpoint, creds, "submitTicketProposal", encoded); err != nil {
+	if _, err = client.operation("submitTicketProposal", encoded); err != nil {
 		return fmt.Errorf("proposal submission failed: %w", err)
 	}
 	fmt.Fprintln(os.Stdout, "Proposal saved for human review.")

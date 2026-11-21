@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"teleport/internal/version"
 )
 
 func TestProjectRemoveRequiresExactConfirmationAndSendsReviewedRevision(t *testing.T) {
 	deleted := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(version.Header, version.CLI)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/tools/listProjects":

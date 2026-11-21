@@ -47,7 +47,8 @@ func configSSO(args []string, input *os.File, out, diagnostics io.Writer) error 
 	if err != nil {
 		return err
 	}
-	body, err := requestOperation(*endpoint, creds, "getGoogleSSO", []byte(`{}`))
+	client := apiClient{endpoint: *endpoint, token: creds.Token, diagnostics: diagnostics}
+	body, err := client.operation("getGoogleSSO", []byte(`{}`))
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func configSSO(args []string, input *os.File, out, diagnostics io.Writer) error 
 	if err != nil {
 		return err
 	}
-	body, err = requestOperation(*endpoint, creds, operation, raw)
+	body, err = client.operation(operation, raw)
 	if err != nil {
 		return err
 	}

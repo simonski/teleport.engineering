@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 
-from build import local_version
+from build import component_versions
 
 ROOT=Path(__file__).resolve().parents[1]
 ARCHES={"x86_64":"amd64","amd64":"amd64","aarch64":"arm64","arm64":"arm64"}
@@ -31,10 +31,10 @@ def linux_build(arch):
         raise ValueError("Supported Linux architectures: amd64, arm64")
     output=ROOT/"bin/deploy"/("linux-"+arch)/"tp"
     output.parent.mkdir(parents=True,exist_ok=True)
-    version=os.environ.get("TELEPORT_BUILD_VERSION") or local_version(ROOT,0).replace("dev.0","deploy")
+    version=component_versions(ROOT)["Server"]
     environment=dict(os.environ,GOOS="linux",GOARCH=arch,CGO_ENABLED="0")
     subprocess.run([sys.executable,"-B",str(ROOT/"tools/pack_web.py")],cwd=ROOT,check=True)
-    subprocess.run(["go","build","-trimpath","-ldflags",f"-s -w -X main.version={version}","-o",str(output),"./cmd/tp"],
+    subprocess.run(["go","build","-trimpath","-ldflags","-s -w","-o",str(output),"./cmd/tp"],
                    cwd=ROOT,env=environment,check=True,timeout=600)
     header=output.read_bytes()[:20]
     machine=int.from_bytes(header[18:20],"little")

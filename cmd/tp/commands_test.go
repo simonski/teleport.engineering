@@ -13,6 +13,7 @@ import (
 
 	"teleport/internal/app"
 	"teleport/internal/server"
+	"teleport/internal/version"
 )
 
 func TestCommandCatalogueCoversEveryShippedOperationAndHasNoDuplicatePaths(t *testing.T) {
@@ -143,6 +144,7 @@ func TestNounActionsRejectConflictingSelectorsAndMalformedRequests(t *testing.T)
 func TestNounAgentListCallsExistingAPIWithCurrentCredentials(t *testing.T) {
 	calls := 0
 	fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(version.Header, version.CLI)
 		calls++
 		if r.URL.Path != "/api/tools/listSessions" || r.Header.Get("Authorization") != "Bearer fixture-token" || r.Method != "POST" {
 			t.Error("wrong operation, identity or method")

@@ -119,7 +119,7 @@ def reset_installation(manifest):
     binary=release/"tp"
     if release.is_symlink() or binary.is_symlink() or not binary.is_file() or hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest["sha256"]:
         raise RuntimeError("Uploaded reset binary is invalid")
-    if subprocess.check_output([str(binary),"version"],text=True,timeout=5).strip()!=manifest["version"]:
+    if subprocess.check_output([str(binary),"version","-component","server"],text=True,timeout=5).strip()!=manifest["version"]:
         raise RuntimeError("Uploaded reset binary identity differs")
     config=root/"database.json"
     data=root/"postgres/data"
@@ -209,7 +209,7 @@ def deploy(manifest):
     if not binary.is_file() or binary.is_symlink() or hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest["sha256"]:
         raise RuntimeError("Uploaded binary hash does not match the build")
     binary.chmod(0o700)
-    version=subprocess.check_output([str(binary),"version"],text=True,timeout=5).strip()
+    version=subprocess.check_output([str(binary),"version","-component","server"],text=True,timeout=5).strip()
     if version!=manifest["version"]:
         raise RuntimeError("Uploaded binary identity differs from the build")
     # Validate deployment-owned paths before stopping an existing healthy server.

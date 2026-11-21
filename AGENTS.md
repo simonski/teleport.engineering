@@ -30,6 +30,7 @@ Go 1.27.3+, Python 3 and Make are required to build; Node.js is also required fo
 - `make build`: produce `bin/tp` with build version metadata.
 - `make build-debug`: retain native debug information in `bin/tp`.
 - `make install`: install the executable.
+- `make run PORT=9999`: build and serve the initialized local installation on a loopback port.
 - `make sbom`: generate `sbom.cdx.json` with Go and bundled browser dependencies, licenses and hashes.
 - `make browser-tools`: prepare a cached, pinned Python Playwright client and its matching headless Chromium for browser acceptance checks.
 - `make deploy`: detect Linux architecture over SSH, build a static target executable and SCP/start it below `/home/exedev/teleport`; strong first-run credentials are written to protected remote/local config files, never command arguments or tool history. Existing installations are never reset.

@@ -11,12 +11,15 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"teleport/internal/version"
 )
 
 func importFixture(t *testing.T, denied bool) (string, string, *[]map[string]any) {
 	t.Helper()
 	saved := []map[string]any{}
 	fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(version.Header, version.CLI)
 		if r.Header.Get("Authorization") != "Bearer fixture-token" {
 			t.Error("capture changed the current identity")
 		}

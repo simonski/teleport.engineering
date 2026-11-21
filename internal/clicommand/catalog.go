@@ -152,7 +152,7 @@ func Catalogue(operations []Operation) []Command {
 		{Command: "logout", Summary: "Sign out of the current session"},
 		{Command: "import -project NAME [FILE | -i]", Summary: "Capture UTF-8 text as an Idea; classification follows separately"},
 		{Command: "skill", Summary: "Print the bundled harness SKILL.md (offline)"},
-		{Command: "version", Summary: "Print the local build identity (offline)"},
+		{Command: "version", Summary: "Print the local CLI or server application version (offline)"},
 		{Command: "tools", Summary: "Fetch the running server's operation discovery JSON"},
 		{Command: "spec", Summary: "Fetch the running server's OpenAPI contract"},
 	}

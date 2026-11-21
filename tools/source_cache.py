@@ -21,7 +21,7 @@ def source_identity(root, purpose):
     # Compiler command overrides and CGO flags may change output independently
     # of tracked sources. Only the digest is persisted.
     digest.update(json.dumps({name: os.environ.get(name, "") for name in (
-        "TELEPORT_BUILD_VERSION", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS",
+        "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS",
         "CGO_FFLAGS", "CGO_LDFLAGS", "CC", "CXX", "PKG_CONFIG",
     )}, sort_keys=True).encode())
     def include(path, prefix):

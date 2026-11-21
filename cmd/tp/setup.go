@@ -34,8 +34,9 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 	if err != nil {
 		return err
 	}
+	client := apiClient{endpoint: *endpoint, token: creds.Token, diagnostics: diagnostics}
 	// Check before any prompts or configuration changes. Creation enforces uniqueness again.
-	body, err := requestOperation(*endpoint, creds, "listProjects", []byte(`{"query":"Teleport","limit":200}`))
+	body, err := client.operation("listProjects", []byte(`{"query":"Teleport","limit":200}`))
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 	if page.NextCursor != "" {
 		return errors.New("too many matching projects to verify uniqueness; setup made no changes")
 	}
-	session, err := requestOperation(*endpoint, creds, "getSession", []byte(`{}`))
+	session, err := client.operation("getSession", []byte(`{}`))
 	if err != nil {
 		return err
 	}
@@ -112,7 +113,7 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 	request := newRequestID()
 	data, _ := json.Marshal(map[string]any{"name": "Teleport", "key": "teleport", "description": description, "requestId": request})
 	fmt.Fprintf(diagnostics, "Request ID: %q (reuse when reconciling an uncertain creation)\n", request)
-	result, err := requestOperation(*endpoint, creds, "createProject", data)
+	result, err := client.operation("createProject", data)
 	if err != nil {
 		return err
 	}
@@ -125,14 +126,14 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 	}
 	if max != nil {
 		data, _ = json.Marshal(map[string]any{"projectId": project.ID, "expectedVersion": project.Version, "refineWorkers": 1, "doingWorkers": 1, "maxAgents": *max})
-		result, err = requestOperation(*endpoint, creds, "setLaneCapacity", data)
+		result, err = client.operation("setLaneCapacity", data)
 		if err != nil {
 			return fmt.Errorf("Teleport project was created, but agent capacity was not configured: %w", err)
 		}
 	}
 	if mode != "" && mode != "keep" {
 		data, _ = json.Marshal(map[string]any{"mode": mode, "expectedVersion": current.Settings.Version})
-		if _, err = requestOperation(*endpoint, creds, "setExecutionMode", data); err != nil {
+		if _, err = client.operation("setExecutionMode", data); err != nil {
 			return fmt.Errorf("Teleport project was created, but server execution mode was not configured: %w", err)
 		}
 	}

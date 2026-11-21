@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"teleport/internal/version"
 )
 
 func TestSetupRejectsExistingProjectBeforePromptOrMutation(t *testing.T) {
 	calls := []string{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(version.Header, version.CLI)
 		calls = append(calls, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"items":[{"id":1,"name":"Teleport"}]}`))
@@ -32,6 +35,7 @@ func TestSetupRejectsExistingProjectBeforePromptOrMutation(t *testing.T) {
 func TestSetupCreatesProjectAndAppliesChosenSettings(t *testing.T) {
 	calls := []string{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(version.Header, version.CLI)
 		calls = append(calls, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		var data map[string]any

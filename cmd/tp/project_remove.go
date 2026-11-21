@@ -38,12 +38,13 @@ func removeProjectCommand(args []string, input io.Reader, out, diagnostics io.Wr
 	if err != nil {
 		return err
 	}
-	id, err := projectIDByName(*endpoint, creds, names[0])
+	client := apiClient{endpoint: *endpoint, token: creds.Token, diagnostics: diagnostics}
+	id, err := client.projectIDByName(names[0])
 	if err != nil {
 		return err
 	}
 	request, _ := json.Marshal(map[string]any{"id": id})
-	body, err := requestOperation(*endpoint, creds, "previewProjectRemoval", request)
+	body, err := client.operation("previewProjectRemoval", request)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func removeProjectCommand(args []string, input io.Reader, out, diagnostics io.Wr
 		return errors.New("project removal cancelled; no changes made")
 	}
 	request, _ = json.Marshal(map[string]any{"id": id, "expectedRevision": preview.Revision, "confirm": true})
-	body, err = requestOperation(*endpoint, creds, "deleteProject", request)
+	body, err = client.operation("deleteProject", request)
 	if err != nil {
 		return err
 	}

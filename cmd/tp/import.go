@@ -95,7 +95,8 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 	if err != nil {
 		return err
 	}
-	projectID, err := projectIDByName(*endpoint, creds, *project)
+	client := apiClient{endpoint: *endpoint, token: creds.Token, diagnostics: diagnostics}
+	projectID, err := client.projectIDByName(*project)
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 		return err
 	}
 	fmt.Fprintf(diagnostics, "Request ID: %q (reuse -request-id for an uncertain retry)\n", *request)
-	result, err := requestOperation(*endpoint, creds, "saveIdea", encoded)
+	result, err := client.operation("saveIdea", encoded)
 	if err != nil && err.Error() == "400 Bad Request: Invalid request fields or JSON" {
 		// Older servers reject the additive origin field before any mutation.
 		legacy, marshalErr := json.Marshal(struct {
@@ -158,7 +159,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 		if marshalErr != nil {
 			return marshalErr
 		}
-		result, err = requestOperation(*endpoint, creds, "saveIdea", legacy)
+		result, err = client.operation("saveIdea", legacy)
 	}
 	if err != nil {
 		return err
@@ -190,7 +191,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 }
 
 // projectIDByName resolves only projects visible to the current session.
-func projectIDByName(endpoint string, creds credentials, name string) (int64, error) {
+func (api *apiClient) projectIDByName(name string) (int64, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return 0, errors.New("provide -project NAME")
@@ -199,7 +200,7 @@ func projectIDByName(endpoint string, creds credentials, name string) (int64, er
 	var found int64
 	for {
 		query, _ := json.Marshal(map[string]any{"query": name, "limit": 100, "cursor": cursor})
-		body, err := requestOperation(endpoint, creds, "listProjects", query)
+		body, err := api.operation("listProjects", query)
 		if err != nil {
 			return 0, err
 		}

@@ -17,6 +17,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "bin/tp")
     args = parser.parse_args()
+    cli_version = subprocess.check_output([str(args.binary), "version"], text=True, timeout=5).strip()
+    advertised = [cli_version]
     receipts, calls, failures, old_server = {}, [], [], [False]
     google = {"version": 0, "enabled": False, "configured": False, "clientId": "", "redirectUri": "", "mode": "registered"}
 
@@ -78,6 +80,7 @@ def main():
             body = json.dumps(result).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("X-Teleport-Version", advertised[0])
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -210,6 +213,10 @@ def main():
             old_server[0] = True
             tp("import", str(source), "-project", "Flight", "-request-id", "legacy-server")
             assert "origin" not in receipts["legacy-server"][0]
+            advertised[0] = "0.1.0"
+            mismatch = tp("agent", "ls", "-project", "2", "-json")
+            assert json.loads(mismatch.stdout)["items"] == []
+            assert cli_version in mismatch.stderr and "0.1.0" in mismatch.stderr and "Upgrade the server." in mismatch.stderr
             assert not failures, failures
     finally:
         fixture.shutdown()

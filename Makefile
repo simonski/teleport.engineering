@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
-.PHONY: help build build-debug install sbom browser-tools deploy deploy-reset db-up db-down check check-go check-integration check-race race-check check-full test lint clean
+.PHONY: help build build-debug install run sbom browser-tools deploy deploy-reset db-up db-down check check-go check-integration check-race race-check check-full test lint clean
+PORT ?= 9999
 DEPLOY_HOST ?= exedev@teleport.engineering
 DEPLOY_DIR ?= /home/exedev/teleport
 DEPLOY_ADDR ?= 0.0.0.0:8000
@@ -10,6 +11,7 @@ help:
 	@echo "build         Build bin/tp with a local build identity"
 	@echo "build-debug   Build bin/tp with native debugging information"
 	@echo "install       Build and install tp into GOBIN or GOPATH/bin"
+	@echo "run           Serve the initialized local installation (PORT=9999)"
 	@echo "sbom          Generate sbom.cdx.json for Go and bundled browser dependencies"
 	@echo "browser-tools Prepare the pinned persistent browser client"
 	@echo "deploy        Build Linux tp, scp to /home/exedev/teleport and start it"
@@ -32,6 +34,8 @@ build-debug:
 	python3 tools/build.py --debug
 install: build
 	python3 tools/build.py --install-only
+run: build
+	bin/tp serve -p "$(PORT)"
 sbom:
 	python3 -B tools/sbom.py
 browser-tools:

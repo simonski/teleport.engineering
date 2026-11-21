@@ -114,7 +114,7 @@ def main():
                     if argument in ("-addr","--addr"):address=command[index+1]
                     elif argument.startswith(("-addr=","--addr=")):address=argument.split("=",1)[1]
                 if address.startswith("0.0.0.0:"):address=address.replace("0.0.0.0:","127.0.0.1:",1)
-                expected=subprocess.check_output([str(installed),"version"],text=True).strip()
+                expected=subprocess.check_output([str(installed),"version","-component","server"],text=True).strip()
                 process=launch(command,root/"migration-server.log")
                 try:
                     deadline=time.monotonic()+10

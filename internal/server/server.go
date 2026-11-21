@@ -21,6 +21,7 @@ import (
 	"teleport/internal/app"
 	"teleport/internal/model"
 	teleportskill "teleport/internal/skills/teleport"
+	appversion "teleport/internal/version"
 )
 
 //go:embed web_assets.zip
@@ -164,6 +165,7 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 	mux.HandleFunc("GET /index.html", index)
 	mux.Handle("GET /", http.FileServer(http.FS(web)))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(appversion.Header, version)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Security-Policy", contentPolicy(""))

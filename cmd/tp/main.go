@@ -24,9 +24,8 @@ import (
 	"teleport/internal/server"
 	teleportskill "teleport/internal/skills/teleport"
 	"teleport/internal/store"
+	"teleport/internal/version"
 )
-
-var version = "0.1.0-dev"
 
 type credentials struct {
 	Server string `json:"server"`
@@ -180,21 +179,26 @@ func run(args []string) error {
 	}
 	if command == "version" {
 		flags := flag.NewFlagSet(command, flag.ContinueOnError)
-		machine := flags.Bool("json", false, "print build identity as JSON")
+		machine := flags.Bool("json", false, "print the component version as JSON")
+		component := flags.String("component", "cli", "application component: cli or server")
 		if err := flags.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
 				return nil
 			}
 			return err
 		}
-		if flags.NArg() != 0 {
-			return errors.New("usage: tp version [-json]")
+		if flags.NArg() != 0 || *component != "cli" && *component != "server" {
+			return errors.New("usage: tp version [-component cli|server] [-json]")
+		}
+		value := version.CLI
+		if *component == "server" {
+			value = version.Server
 		}
 		if *machine {
-			body, _ := json.Marshal(map[string]string{"version": version})
+			body, _ := json.Marshal(map[string]string{"version": value, "buildNumber": version.BuildNumber})
 			return printResponse(os.Stdout, body, true)
 		}
-		fmt.Println(version)
+		fmt.Println(value)
 		return nil
 	}
 	if command == "skill" {
@@ -221,6 +225,10 @@ func run(args []string) error {
 	dbPath := flags.String("db", "", "PostgreSQL URL (init/serve only; prefer a protected -db-config file for secrets)")
 	dbConfig := flags.String("db-config", env("TELEPORT_DB_CONFIG", filepath.Join(home, ".teleport", "database.json")), "owner-only database configuration JSON containing url")
 	addr := flags.String("addr", "localhost:9999", "listen address")
+	port := 0
+	if command == "serve" {
+		flags.IntVar(&port, "p", 0, "listen on this loopback port")
+	}
 	publicHost := flags.String("public-host", "", "comma-separated trusted HTTPS browser hostnames behind a TLS proxy (no scheme or path)")
 	runtimeRoot := flags.String("runtime-dir", env("TELEPORT_RUNTIME_DIR", ""), "private local session daemon state directory (serve only)")
 	terminalFixture := flags.Bool("enable-terminal-fixture", false, "enable the no-model development terminal fixture (serve only)")
@@ -248,7 +256,7 @@ func run(args []string) error {
 	if flags.NArg() != 0 {
 		return errors.New("unexpected arguments; use -data JSON or tp help for noun/action commands")
 	}
-	var explicitDB, explicitConfig bool
+	var explicitDB, explicitConfig, explicitPort, explicitAddr bool
 	flags.Visit(func(value *flag.Flag) {
 		if value.Name == "db" {
 			explicitDB = true
@@ -256,7 +264,15 @@ func run(args []string) error {
 		if value.Name == "db-config" {
 			explicitConfig = true
 		}
+		explicitPort = explicitPort || value.Name == "p"
+		explicitAddr = explicitAddr || value.Name == "addr"
 	})
+	if explicitPort {
+		if port < 1 || port > 65535 || explicitAddr {
+			return errors.New("use -p PORT (1–65535) or -addr ADDRESS")
+		}
+		*addr = net.JoinHostPort("localhost", fmt.Sprint(port))
+	}
 	if !explicitDB && !explicitConfig {
 		*dbPath = os.Getenv("TELEPORT_DB")
 	}
@@ -351,7 +367,7 @@ func run(args []string) error {
 		if hostErr != nil {
 			return hostErr
 		}
-		httpServer := server.HTTP(*addr, server.New(service, version, publicHosts...))
+		httpServer := server.HTTP(*addr, server.New(service, version.Server, publicHosts...))
 		stopCtx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 		defer cancel()
 		go func() {
@@ -390,7 +406,7 @@ func run(args []string) error {
 		if mode == "" {
 			mode = "off"
 		}
-		slog.Info("teleport listening", "address", *addr, "version", version, "agents", mode)
+		slog.Info("teleport listening", "address", *addr, "version", version.Server, "agents", mode)
 		err = httpServer.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
@@ -398,17 +414,10 @@ func run(args []string) error {
 		return err
 	}
 	*endpoint = strings.TrimRight(*endpoint, "/")
+	client := apiClient{endpoint: *endpoint, diagnostics: os.Stderr}
 	if command == "spec" || command == "tools" {
 		path := map[string]string{"spec": "/openapi.json", "tools": "/api/actions"}[command]
-		resp, err := http.Get(*endpoint + path)
-		if err != nil {
-			return fmt.Errorf("server unavailable; run tp serve: %w", err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("server returned %s", resp.Status)
-		}
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+		body, err := client.get(path)
 		if err != nil {
 			return err
 		}
@@ -426,7 +435,8 @@ func run(args []string) error {
 		encoded, _ := json.Marshal(map[string]string{"username": name, "password": password})
 		*data = string(encoded)
 	}
-	body, err := requestOperation(*endpoint, creds, command, []byte(*data))
+	client.token = creds.Token
+	body, err := client.operation(command, []byte(*data))
 	if err != nil {
 		return err
 	}
