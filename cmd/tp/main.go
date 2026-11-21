@@ -65,6 +65,9 @@ func run(args []string) error {
 	if command == "setup" {
 		return setupProject(args[1:], os.Stdin, os.Stdout, os.Stderr)
 	}
+	if command == "config" {
+		return configSSO(args[1:], os.Stdin, os.Stdout, os.Stderr)
+	}
 	if command == "import" {
 		return captureText(args[1:], os.Stdin, os.Stdout, os.Stderr)
 	}

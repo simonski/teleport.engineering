@@ -305,6 +305,9 @@ func (s *Service) configureRepository(ctx context.Context, token string, raw jso
 	if !a.Administrator {
 		return nil, failure(403, "forbidden", "Only an installation administrator may grant local filesystem bindings")
 	}
+	if len(snapshot.Accounts) > 1 {
+		return nil, failure(409, "isolation_required", "Local filesystem bindings require a single-user installation")
+	}
 	if err := require(snapshot, a, in.ProjectID, "Viewer"); err != nil {
 		return nil, err
 	}
@@ -354,6 +357,9 @@ func (s *Service) configureRepository(ctx context.Context, token string, raw jso
 		}
 		if !a.Administrator {
 			return false, failure(403, "forbidden", "Administrator rights changed")
+		}
+		if len(st.Accounts) > 1 {
+			return false, failure(409, "isolation_required", "Local filesystem bindings require a single-user installation")
 		}
 		if err := require(st, a, in.ProjectID, "Viewer"); err != nil {
 			return false, err

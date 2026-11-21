@@ -41,6 +41,16 @@ New projects record a project root, defaulting to `~/code/teleport`; it can be c
 
 Run `tp login` to enter a username and a hidden password. For unattended use, set `TELEPORT_USERNAME` and `TELEPORT_PASSWORD`, or use `tp login -username NAME -password-stdin` to supply the password through standard input. `-username` takes precedence over the environment, and `-password-stdin` takes precedence over `TELEPORT_PASSWORD`.
 
+### Google sign-in
+
+Create a Google OAuth web application and register the exact Teleport callback, such as `https://teleport.engineering/auth/google/callback`. The callback must use Teleport’s configured public host or exact local loopback origin. Sign in as a Teleport administrator and run `tp config setup-sso`, then `tp config enable-sso`. The same controls are in **System → Google sign-in**. `tp config disable-sso` turns off new Google sign-ins.
+
+- **Auto-enrol** admits a verified Google account when execution is Off and prior host work has been reconciled. If admission is blocked, the request goes to the waitlist.
+- **Waitlist** tells new applicants they are waiting for administrator approval.
+- **Registered** shows a registration-required screen until an administrator approves the account.
+
+Administrators can review the queue, approve enrollment, and separately grant administrator access. Google enrollment creates a separate account and a private Personal project. The local administrator password continues to work. Installations with multiple accounts can share workspace features, while real host execution remains disabled pending project isolation.
+
 After `tp init`, start the server and sign in, then run `tp setup` to create the Teleport project and choose its description and agent limit. Administrators can also choose the server execution mode. Setup refuses an existing Teleport project without changing settings.
 
 Capture freeform text with `tp import -project Teleport notes.txt` or `tp import -project Teleport` and paste multiple lines, finishing with Ctrl-D. Piped input and `tp import -` work too. Capture creates one Idea in the required named project and preserves up to 20,000 UTF-8 bytes without truncation. `-title` overrides the derived title; `-request-id` reuses the identity printed on stderr for an uncertain retry; `-json` emits the full Idea on stdout. Classification and goal creation follow separately and no agent is started by capture.

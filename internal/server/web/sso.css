@@ -1,0 +1,7 @@
+#google-login:not(:empty){display:grid;gap:12px;margin-top:20px}
+.login #login[hidden]{display:none}
+#google-login h1,#google-login p{margin:0}
+.google-sign-in{display:block;text-align:center;text-decoration:none;padding:10px 16px;border:1px solid var(--line);border-radius:4px;color:var(--ink)}
+.google-sign-in:hover,.google-sign-in:focus-visible{background:var(--soft)}
+.google-enrollment{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
+.google-enrollment strong{margin-right:auto;overflow-wrap:anywhere}

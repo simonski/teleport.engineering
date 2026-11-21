@@ -71,6 +71,8 @@ func resolveConsoleCommand(input ConsoleCommandInput, version string) (ConsoleCo
 			return ConsoleCommandResult{Data: data, Machine: len(args) == 2}, nil
 		case "init", "serve", "setup", "login", "import":
 			return ConsoleCommandResult{}, errors.New("This local or interactive command requires the tp CLI; the browser console uses the current signed-in session")
+		case "config":
+			return ConsoleCommandResult{}, errors.New("Use System settings to configure Google sign-in")
 		}
 		if args[0] == "project" && len(args) > 1 && args[1] == "rm" {
 			return ConsoleCommandResult{}, errors.New("Project removal requires the local tp CLI confirmation flow")

@@ -42,6 +42,9 @@ func (s *Service) installedSkillCall(ctx context.Context, token, op string, raw 
 	if !a.Administrator || a.ServiceRunID != "" || a.ServiceSessionID != "" {
 		return nil, failure(403, "administrator_required", "Skill curation requires an administrator")
 	}
+	if len(st.Accounts) > 1 {
+		return nil, failure(409, "isolation_required", "Host skill curation requires a single-user installation")
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, failure(503, "skills_unavailable", "Skill directory unavailable")

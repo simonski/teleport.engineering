@@ -63,6 +63,8 @@ type Point struct {
 	Y float64 `json:"y"`
 }
 type State struct {
+	GoogleSSO           GoogleSSOConfig               `json:"googleSSO,omitzero"`
+	GoogleEnrollment    map[string]GoogleEnrollment   `json:"googleEnrollment,omitempty"`
 	TicketProposals     map[string]TicketProposal     `json:"ticketProposals,omitempty"`
 	UsagePrices         map[string][]UsagePrice       `json:"usagePrices,omitempty"`
 	PriceRecalculations map[string]PriceRecalculation `json:"priceRecalculations,omitempty"`

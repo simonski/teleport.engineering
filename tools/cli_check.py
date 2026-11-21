@@ -1,4 +1,4 @@
-"""Exercise the real tp command catalogue and text capture against an owned zero-model HTTP fixture."""
+"""Exercise tp command discovery, text capture and SSO setup against an owned HTTP fixture."""
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "bin/tp")
     args = parser.parse_args()
     receipts, calls, failures, old_server = {}, [], [], [False]
+    google = {"version": 0, "enabled": False, "configured": False, "clientId": "", "redirectUri": "", "mode": "registered"}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *arguments):
@@ -41,6 +42,21 @@ def main():
                 if data != {"projectId": 2}:
                     failures.append("Agent list changed project scope")
                 result = {"items": [], "nextCursor": ""}
+            elif operation == "getGoogleSSO":
+                result = google
+            elif operation in ("setupGoogleSSO", "enableGoogleSSO", "disableGoogleSSO"):
+                if data.get("expectedVersion") != google["version"]:
+                    failures.append("SSO command used stale configuration")
+                if operation == "setupGoogleSSO":
+                    if (data.get("clientSecret"), data.get("clientId"), data.get("mode")) != ("google-fixture-secret", "fixture.apps.googleusercontent.com", "waitlist"):
+                        failures.append("SSO setup did not send the prompted values")
+                    if not data.get("redirectUri", "").endswith("/auth/google/callback"):
+                        failures.append("SSO setup did not supply a callback")
+                    google.update(configured=True, clientId=data["clientId"], redirectUri=data["redirectUri"], mode=data["mode"])
+                else:
+                    google["enabled"] = operation == "enableGoogleSSO"
+                google["version"] += 1
+                result = google
             elif operation == "saveIdea":
                 if old_server[0] and "origin" in data:
                     body = json.dumps({"error": {"code": "invalid_request", "message": "Invalid request fields or JSON"}}).encode()
@@ -102,6 +118,13 @@ def main():
             assert len(calls) == before
             invalid = tp("agent", "ls", "-json", "-limit", "private-invalid-integer", okay=False)
             assert not invalid.stdout and "private-invalid-integer" not in invalid.stderr
+
+            assert "setup-sso" in tp("config").stdout
+            values = "fixture.apps.googleusercontent.com\n\nwaitlist\ngoogle-fixture-secret\n"
+            setup = tp("config", "setup-sso", "-json", input=values)
+            assert json.loads(setup.stdout)["configured"] and "google-fixture-secret" not in setup.stdout + setup.stderr
+            assert json.loads(tp("config", "enable-sso", "-json").stdout)["enabled"]
+            assert not json.loads(tp("config", "disable-sso", "-json").stdout)["enabled"]
 
             text = "CLI capture fixture\n\nKeep Unicode: 月 🌙\n  and exact indentation.\n"
             source = folder / "notes.txt"
@@ -192,7 +215,7 @@ def main():
         fixture.shutdown()
         fixture.server_close()
         thread.join(timeout=2)
-    print("PASS: real binary catalogue, noun/action dispatch, typed filters, native/API separation, file and piped capture, stable retries and terminal multiline EOF input; zero database/browser/model calls")
+    print("PASS: real binary catalogue, typed commands, SSO setup/enable/disable and file, pipe and terminal capture; zero database/browser/model calls")
 
 
 if __name__ == "__main__":

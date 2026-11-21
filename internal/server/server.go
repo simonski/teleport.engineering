@@ -36,6 +36,7 @@ var Operations = []Operation{{"login", "ACT-1316", "Sign in with local credentia
 
 func New(service *app.Service, version string, configuredHosts ...string) http.Handler {
 	mux := http.NewServeMux()
+	registerGoogleSSO(mux, service, configuredHosts)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		write(w, 200, map[string]string{"status": "ok", "version": version})
 	})
@@ -134,7 +135,7 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 		}
 		if op == "login" {
 			login := result.(app.LoginResult)
-			http.SetCookie(w, &http.Cookie{Name: "teleport_session", Value: login.Token, Path: "/", HttpOnly: true, Secure: secureRequest(r, configuredHosts), SameSite: http.SameSiteStrictMode, MaxAge: 43200})
+			setSignInCookie(w, login.Token, secureRequest(r, configuredHosts))
 		}
 		if op == "logout" {
 			http.SetCookie(w, &http.Cookie{Name: "teleport_session", Value: "", Path: "/", HttpOnly: true, Secure: secureRequest(r, configuredHosts), SameSite: http.SameSiteStrictMode, MaxAge: -1})
@@ -174,6 +175,11 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 		mux.ServeHTTP(w, r)
 	})
 }
+
+func setSignInCookie(w http.ResponseWriter, token string, secure bool) {
+	http.SetCookie(w, &http.Cookie{Name: "teleport_session", Value: token, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode, MaxAge: 43200})
+}
+
 func contentPolicy(nonce string) string {
 	style := "style-src 'self'"
 	if nonce != "" {
@@ -240,10 +246,11 @@ func openAPI(version string) map[string]any {
 				Error app.Error `json:"error"`
 			}{})}}}
 		}
-		if op.Name == "login" {
+		if op.Name == "login" || op.Name == "getAuthCapabilities" {
 			post["security"] = []any{}
 		}
 	}
+	addGoogleOpenAPI(paths)
 	for _, path := range []string{"/healthz", "/openapi.json", "/api/actions", "/skill.md", "/", "/app.js", "/workspace.js", "/controls.js", "/workflows.js", "/agents.js", "/delivery.js", "/style.css", "/workflows.css", "/agents.css", "/delivery.css", "/shell.js", "/shell.css", "/navigation.js", "/navigation.css", "/tickets.js"} {
 		paths[path] = map[string]any{"get": map[string]any{"responses": map[string]any{"200": map[string]string{"description": "Public application asset or discovery"}}}}
 	}

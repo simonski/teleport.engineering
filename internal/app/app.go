@@ -155,6 +155,16 @@ func (s *Service) Call(ctx context.Context, token, operation string, raw json.Ra
 	if len(raw) == 0 {
 		raw = json.RawMessage(`{}`)
 	}
+	if operation == "getAuthCapabilities" {
+		if err := parse(raw, &struct{}{}); err != nil {
+			return nil, err
+		}
+		st, err := s.db.Read(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return AuthCapabilities{Google: st.GoogleSSO.Enabled && publicGoogleSSO(st.GoogleSSO).Configured}, nil
+	}
 	if scriptOperation(operation) {
 		return s.scriptCall(ctx, token, operation, raw)
 	}
@@ -242,6 +252,10 @@ func (s *Service) Call(ctx context.Context, token, operation string, raw json.Ra
 			return false, failure(403, "agent_scope", "This harness credential permits context reads only")
 		}
 		switch operation {
+		case "getGoogleSSO", "setupGoogleSSO", "enableGoogleSSO", "disableGoogleSSO", "listGoogleEnrollments", "approveGoogleEnrollment", "grantGoogleAdministrator":
+			var changed bool
+			result, changed, err = googleAdminCall(st, a, operation, raw)
+			return changed, err
 		case "getSession":
 			body := map[string]any{"account": publicAccount(a), "installationId": st.InstallationID, "revision": st.Revision, "settings": st.Settings, "preferences": personalPreferences(st, a), "welcomeSetup": welcomeSetup(st, a)}
 			if location := currentLocation(st, a); location != nil {
@@ -298,17 +312,16 @@ func (s *Service) login(ctx context.Context, raw json.RawMessage) (any, error) {
 	err := s.db.Update(ctx, func(st *model.State) (bool, error) {
 		a, ok := st.Accounts[input.Username]
 		hash := a.PasswordHash
-		if !ok {
+		hasPassword := hash != ""
+		if !ok || !hasPassword {
 			hash = st.Accounts["admin"].PasswordHash
 		}
-		if !passwordMatches(hash, input.Password) || !ok || a.Suspended {
+		if !passwordMatches(hash, input.Password) || !ok || !hasPassword || a.Suspended {
 			return false, failure(401, "invalid_credentials", "Invalid username or password")
 		}
 		collections(st)
 		ensurePersonalProject(st, a)
-		token := randomID()
-		st.Sessions[digest(token)] = model.Session{AccountID: a.ID, Expires: time.Now().UTC().Add(12 * time.Hour)}
-		result = LoginResult{token, publicAccount(a)}
+		result = LoginResult{newSignInSession(st, a), publicAccount(a)}
 		return true, nil
 	})
 	if err != nil {
@@ -323,6 +336,12 @@ func (s *Service) login(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	s.failures = 0
 	return result, nil
+}
+
+func newSignInSession(st *model.State, a model.Account) string {
+	token := randomID()
+	st.Sessions[digest(token)] = model.Session{AccountID: a.ID, Expires: time.Now().UTC().Add(12 * time.Hour)}
+	return token
 }
 
 func ErrorResponse(err error) *Error {

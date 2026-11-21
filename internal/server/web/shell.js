@@ -29,6 +29,12 @@ function openSystemSettings() {
   on('execution-mode','change',async()=>{await setMode();syncRuntimeLabel();});
   on('system-brake','click',systemBrakeForm);
   const guard=captureDialogCompletion(dialog);
+  if(admin){
+    const section=document.createElement('section');
+    section.innerHTML='<h2>Google sign-in</h2><button type="button" class="secondary">Configure Google sign-in</button>';
+    section.querySelector('button').onclick=()=>{dialog.close();openGoogleSettings().catch(showError);};
+    dialog.querySelector('.settings-list').append(section);
+  }
   on('refresh-harnesses','click',async()=>{const button=byId('refresh-harnesses'),status=byId('harness-refresh-status');button.disabled=true;status.textContent='Checking installed harnesses…';try{const result=await api('getLocalHarnesses',{});if(!guard.current())return;const names=result.available.map(item=>item.title);status.textContent=(names.length?names.join(', '):'No supported harnesses found.')+' Model and thinking-level discovery is not available yet.';}catch(error){if(guard.current())status.textContent=error.message||'Harness discovery failed.';}finally{if(guard.current())button.disabled=false;}});
 }
 

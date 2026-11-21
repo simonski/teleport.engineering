@@ -150,6 +150,9 @@ func Catalogue(operations []Operation) []Command {
 		{Command: "commands [-json]", Summary: "Print the complete offline command catalogue"},
 		{Command: "project rm NAME", Summary: "Preview and confirm administrator project removal"},
 		{Command: "setup", Summary: "Configure common settings and create the Teleport project"},
+		{Command: "config setup-sso", Summary: "Prompt for Google OAuth credentials and enrollment mode"},
+		{Command: "config enable-sso", Summary: "Enable configured Google sign-in"},
+		{Command: "config disable-sso", Summary: "Disable Google sign-in"},
 		{Command: "init", Summary: "Initialize configured PostgreSQL; never starts services"},
 		{Command: "serve", Summary: "Run the web/API server and configured components"},
 		{Command: "login", Operation: "login", Summary: "Sign in interactively or with TELEPORT_USERNAME and TELEPORT_PASSWORD"},
@@ -255,7 +258,7 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 	if len(args) >= 2 && args[0] == "project" && args[1] == "rm" {
 		return append([]string{"_project-remove"}, args[2:]...), false, nil
 	}
-	for _, native := range []string{"init", "setup", "serve", "login", "logout", "skill", "version", "tools", "spec", "import"} {
+	for _, native := range []string{"init", "setup", "config", "serve", "login", "logout", "skill", "version", "tools", "spec", "import"} {
 		if args[0] == native || strings.HasPrefix(args[0], "_") {
 			return args, false, nil
 		}
@@ -267,7 +270,7 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 		if args[1] == "" {
 			return nil, false, errors.New("provide an API operation name")
 		}
-		for _, reserved := range []string{"init", "setup", "serve", "skill", "version", "tools", "spec", "import", "help", "commands", "api"} {
+		for _, reserved := range []string{"init", "setup", "config", "serve", "skill", "version", "tools", "spec", "import", "help", "commands", "api"} {
 			if args[1] == reserved {
 				return nil, false, errors.New("tp api accepts API operation names, not native commands")
 			}
