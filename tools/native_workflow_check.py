@@ -33,8 +33,8 @@ def main(database_url=None):
     log = (folder / "server.log").open("w")
     browser_name = f"teleport-workflow-{port}"
 
-    def tk(op, data=None):
-        command = [str(ROOT / "bin/tk"), op, "-json"]
+    def tp(op, data=None):
+        command = [str(ROOT / "bin/tp"), op, "-json"]
         if data is not None:
             command += ["--data", json.dumps(data)]
         result = subprocess.run(command, env=env, text=True, capture_output=True, timeout=35)
@@ -52,7 +52,7 @@ def main(database_url=None):
         raise AssertionError(f"Timed out: {label}; evidence: {folder}")
 
     def serve():
-        server = subprocess.Popen([str(ROOT / "bin/tk"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=env, stdout=log, stderr=log)
+        server = subprocess.Popen([str(ROOT / "bin/tp"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=env, stdout=log, stderr=log)
         def ready():
             try:
                 with urllib.request.urlopen(endpoint + "/healthz", timeout=1) as response:
@@ -69,9 +69,9 @@ def main(database_url=None):
         return result.stdout
 
     try:
-        subprocess.run([str(ROOT / "bin/tk"), "init"], env=env, check=True, capture_output=True, timeout=15)
+        subprocess.run([str(ROOT / "bin/tp"), "init"], env=env, check=True, capture_output=True, timeout=15)
         process = serve()
-        subprocess.run([str(ROOT / "bin/tk"), "login", "--password-stdin"], env=env, input="password\n", text=True, check=True, capture_output=True, timeout=15)
+        subprocess.run([str(ROOT / "bin/tp"), "login", "--password-stdin"], env=env, input="password\n", text=True, check=True, capture_output=True, timeout=15)
         repo = folder / "repo"
         repo.mkdir()
         def git(*arguments):
@@ -80,27 +80,27 @@ def main(database_url=None):
         (repo / "fixture.txt").write_text("original\n")
         git("add", ".")
         git("commit", "-m", "Seed")
-        project = tk("createProject", {"name": "Native workflow", "requestId": "project"})
-        project = tk("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repo), "storageRoot": str(folder / "worktrees")})
-        ticket = tk("createTicket", {"projectId": project["id"], "title": "Update fixture", "requestId": "ticket"})
-        ticket = tk("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
+        project = tp("createProject", {"name": "Native workflow", "requestId": "project"})
+        project = tp("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repo), "storageRoot": str(folder / "worktrees")})
+        ticket = tp("createTicket", {"projectId": project["id"], "title": "Update fixture", "requestId": "ticket"})
+        ticket = tp("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
         time.sleep(0.7)
-        assert tk("listSessions")["items"] == [], "off mode launched a harness"
-        settings = tk("getSession")["settings"]
-        tk("setExecutionMode", {"mode": "local", "expectedVersion": settings["version"]})
+        assert tp("listSessions")["items"] == [], "off mode launched a harness"
+        settings = tp("getSession")["settings"]
+        tp("setExecutionMode", {"mode": "local", "expectedVersion": settings["version"]})
         def sessions():
-            return tk("listSessions")["items"]
+            return tp("listSessions")["items"]
         row = wait_for(lambda: next((r for r in sessions() if r["ticketId"] == ticket["id"] and r["state"] == "running"), None), "automatic Refine launch")
         first_id = row["id"]
-        question = wait_for(lambda: next((r for r in tk("getSessionRequests", {"id": first_id})["items"] if r["state"] == "pending"), None), "native question")
-        saved = tk("getPrompt", {"id": ticket["id"], "sessionId": first_id})
+        question = wait_for(lambda: next((r for r in tp("getSessionRequests", {"id": first_id})["items"] if r["state"] == "pending"), None), "native question")
+        saved = tp("getPrompt", {"id": ticket["id"], "sessionId": first_id})
         assert saved["saved"] and [p["source"] for p in saved["prompt"]["contributions"]] == ["system", "project", "goal", "epic", "task", "phase"]
         assert row["ticketId"] == ticket["id"]
         process.terminate()
         process.wait(timeout=10)
         process = serve()
         assert sessions()[0]["id"] == first_id, "API restart replaced a live phase"
-        assert tk("getPrompt", {"id": ticket["id"], "sessionId": first_id}) == saved
+        assert tp("getPrompt", {"id": ticket["id"], "sessionId": first_id}) == saved
         if args.browser:
             browser("open", endpoint)
             browser("wait", '[name="username"]')
@@ -126,9 +126,9 @@ def main(database_url=None):
             browser("click", "[data-native-send]")
             browser("press", "Escape")
         else:
-            tk("respondToAgent", {"id": first_id, "requestId": question["id"], "operationId": "answer", "answers": {"direction": {"answers": ["Continue"]}, "secret": {"answers": ["fixture-secret"]}}})
+            tp("respondToAgent", {"id": first_id, "requestId": question["id"], "operationId": "answer", "answers": {"direction": {"answers": ["Continue"]}, "secret": {"answers": ["fixture-secret"]}}})
         def current():
-            return tk("getTicket", {"id": ticket["id"]})
+            return tp("getTicket", {"id": ticket["id"]})
         ticket = wait_for(lambda: (r if r.get("refinement") and not r.get("execution") else None) if (r := current()) else None, "Refine proposal after confirmed exit")
         assert ticket["status"] == "Refine" and not ticket["refinement"].get("acceptedBy")
         assert (repo / "fixture.txt").read_text() == "original\n"
@@ -139,7 +139,7 @@ def main(database_url=None):
             browser("click", '.checkbox-label')
             browser("find", "role", "button", "click", "--name", "Accept scope", "--exact")
         else:
-            ticket = tk("acceptRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"], "proposalId": ticket["refinement"]["id"]})
+            ticket = tp("acceptRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"], "proposalId": ticket["refinement"]["id"]})
         ticket = wait_for(lambda: (r if r["status"] == "Approval" and not r.get("execution") else None) if (r := current()) else None, "automatic Implementation and separate Review")
         assert ticket["agentReview"]["outcome"] == "success" and not ticket["agentReview"]["simulated"]
         assert ticket["agentReview"]["candidate"] == ticket["delivery"]["candidate"]["commit"]
@@ -158,9 +158,9 @@ def main(database_url=None):
             browser("find", "role", "button", "click", "--name", "Approve and fast-forward main", "--exact")
             ticket = wait_for(lambda: (r if r["status"] == "Done" else None) if (r := current()) else None, "human browser approval")
         else:
-            ticket = tk("approveTicket", {"id": ticket["id"], "expectedVersion": ticket["version"], "confirm": True})
+            ticket = tp("approveTicket", {"id": ticket["id"], "expectedVersion": ticket["version"], "confirm": True})
         assert ticket["status"] == "Done" and (repo / "fixture.txt").read_text() == "delivered\n"
-        tk("shutdownLocalRuntime", {"confirm": True})
+        tp("shutdownLocalRuntime", {"confirm": True})
         clean = True
         print("PASS: automatic Refine → human scope acceptance → Implementation → separate Review → human Approval; saved prompts, native question, same-instance restart, finite attempts, confirmed exits; zero provider calls")
     finally:
@@ -168,13 +168,13 @@ def main(database_url=None):
             subprocess.run(["agent-browser", "--session", browser_name, "close"], capture_output=True, timeout=15)
         if not clean and process is not None and process.poll() is None:
             try:
-                settings = tk("getSession")["settings"]
-                tk("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
-                for row in tk("listSessions")["items"]:
+                settings = tp("getSession")["settings"]
+                tp("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
+                for row in tp("listSessions")["items"]:
                     if row["state"] not in ("exited", "failed"):
-                        tk("stopSession", {"id": row["id"], "confirm": True})
+                        tp("stopSession", {"id": row["id"], "confirm": True})
                 wait_for(lambda: all(r["state"] in ("exited", "failed") for r in sessions()), "cleanup")
-                tk("shutdownLocalRuntime", {"confirm": True})
+                tp("shutdownLocalRuntime", {"confirm": True})
                 clean = True
             except (RuntimeError, AssertionError):
                 print(f"Retain unresolved runtime evidence: {folder}")

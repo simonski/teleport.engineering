@@ -20,7 +20,7 @@ func removeProjectCommand(args []string, input io.Reader, out, diagnostics io.Wr
 	config := flags.String("config", env("TELEPORT_CONFIG", filepath.Join(home, ".teleport", "client.json")), "credential file")
 	machine := flags.Bool("json", false, "print result as JSON")
 	flags.Usage = func() {
-		fmt.Fprintln(diagnostics, "Usage: tk project rm NAME [-server URL] [-config FILE] [-json]")
+		fmt.Fprintln(diagnostics, "Usage: tp project rm NAME [-server URL] [-config FILE] [-json]")
 		flags.PrintDefaults()
 	}
 	names, err := parseInterspersed(flags, args)

@@ -12,9 +12,9 @@ func TestConsoleCommandUsesCLICommandDefinitions(t *testing.T) {
 		op      string
 		machine bool
 	}{
-		{[]string{"tk", "ticket", "show", "7"}, "getTicket", false},
-		{[]string{"tk", "project", "ls", "-json"}, "listProjects", true},
-		{[]string{"tk", "api", "getTicket", "-data", `{"id":7}`}, "getTicket", false},
+		{[]string{"tp", "ticket", "show", "7"}, "getTicket", false},
+		{[]string{"tp", "project", "ls", "-json"}, "listProjects", true},
+		{[]string{"tp", "api", "getTicket", "-data", `{"id":7}`}, "getTicket", false},
 	}
 	for _, tc := range tests {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
@@ -37,17 +37,17 @@ func TestConsoleCommandUsesCLICommandDefinitions(t *testing.T) {
 }
 
 func TestConsoleCommandHelpAndRestrictions(t *testing.T) {
-	result, err := resolveConsoleCommand(ConsoleCommandInput{Args: []string{"tk", "ticket", "show", "-h"}}, "test")
+	result, err := resolveConsoleCommand(ConsoleCommandInput{Args: []string{"tp", "ticket", "show", "-h"}}, "test")
 	if err != nil || !strings.Contains(result.Output, "getTicket") {
 		t.Fatalf("help: %+v, %v", result, err)
 	}
 	for _, args := range [][]string{
-		{"tk", "serve"},
-		{"tk", "login"},
-		{"tk", "project", "rm", "7"},
-		{"tk", "ticket", "show", "-f", "/etc/passwd"},
-		{"tk", "api", "getTicket", "-data", `{"token":"secret"}`},
-		{"tk", "ticket", "show", "7", "-server", "https://example.test"},
+		{"tp", "serve"},
+		{"tp", "login"},
+		{"tp", "project", "rm", "7"},
+		{"tp", "ticket", "show", "-f", "/etc/passwd"},
+		{"tp", "api", "getTicket", "-data", `{"token":"secret"}`},
+		{"tp", "ticket", "show", "7", "-server", "https://example.test"},
 		{"globalThis.injected=true"},
 	} {
 		if _, err := resolveConsoleCommand(ConsoleCommandInput{Args: args}, "test"); err == nil {

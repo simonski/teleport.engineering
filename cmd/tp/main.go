@@ -36,7 +36,7 @@ type credentials struct {
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "tk:", err)
+		fmt.Fprintln(os.Stderr, "tp:", err)
 		os.Exit(1)
 	}
 }
@@ -126,7 +126,7 @@ func run(args []string) error {
 		codex := exec.Command(args[1])
 		codex.Stdin, codex.Stdout, codex.Stderr = os.Stdin, os.Stdout, os.Stderr
 		codex.Env = append(os.Environ(), "TERM=xterm-256color")
-		if executable, err := os.Executable(); err == nil && filepath.Base(executable) == "tk" {
+		if executable, err := os.Executable(); err == nil && filepath.Base(executable) == "tp" {
 			codex.Env = append(codex.Env, "PATH="+filepath.Dir(executable)+string(os.PathListSeparator)+os.Getenv("PATH"))
 		}
 		return codex.Run()
@@ -170,7 +170,7 @@ func run(args []string) error {
 			}
 		}
 		harness.Env = append(harness.Env, "TERM=xterm-256color")
-		if executable, err := os.Executable(); err == nil && filepath.Base(executable) == "tk" {
+		if executable, err := os.Executable(); err == nil && filepath.Base(executable) == "tp" {
 			harness.Env = append(harness.Env, "PATH="+filepath.Dir(executable)+string(os.PathListSeparator)+os.Getenv("PATH"))
 		}
 		return harness.Run()
@@ -196,7 +196,7 @@ func run(args []string) error {
 			return err
 		}
 		if flags.NArg() != 0 {
-			return errors.New("usage: tk version [-json]")
+			return errors.New("usage: tp version [-json]")
 		}
 		if *machine {
 			body, _ := json.Marshal(map[string]string{"version": version})
@@ -216,7 +216,7 @@ func run(args []string) error {
 			return err
 		}
 		if flags.NArg() != 0 {
-			return errors.New("usage: tk skill")
+			return errors.New("usage: tp skill")
 		}
 		_, err := io.WriteString(os.Stdout, teleportskill.Markdown)
 		return err
@@ -254,7 +254,7 @@ func run(args []string) error {
 		return err
 	}
 	if flags.NArg() != 0 {
-		return errors.New("unexpected arguments; use -data JSON or tk help for noun/action commands")
+		return errors.New("unexpected arguments; use -data JSON or tp help for noun/action commands")
 	}
 	var explicitDB, explicitConfig bool
 	flags.Visit(func(value *flag.Flag) {
@@ -295,7 +295,7 @@ func run(args []string) error {
 		db, err := store.Open(*dbPath, command == "init" && !exportState)
 		if err != nil {
 			if errors.Is(err, store.ErrDatabaseUnavailable) {
-				return fmt.Errorf("%w\nFor the repository-managed local database, run make db-up from the repository, then retry tk %s. For an external database, start or contact its PostgreSQL service and check the configured connection", err, command)
+				return fmt.Errorf("%w\nFor the repository-managed local database, run make db-up from the repository, then retry tp %s. For an external database, start or contact its PostgreSQL service and check the configured connection", err, command)
 			}
 			return err
 		}
@@ -324,7 +324,7 @@ func run(args []string) error {
 			if initErr != nil {
 				return initErr
 			}
-			fmt.Printf("Storage: %s\nInitialization complete. Run: tk serve\n", redactLocation(*dbPath))
+			fmt.Printf("Storage: %s\nInitialization complete. Run: tp serve\n", redactLocation(*dbPath))
 			return nil
 		}
 		initialState, err := db.Read(ctx)
@@ -408,7 +408,7 @@ func run(args []string) error {
 		path := map[string]string{"spec": "/openapi.json", "tools": "/api/actions"}[command]
 		resp, err := http.Get(*endpoint + path)
 		if err != nil {
-			return fmt.Errorf("server unavailable; run tk serve: %w", err)
+			return fmt.Errorf("server unavailable; run tp serve: %w", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {

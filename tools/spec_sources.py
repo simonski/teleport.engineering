@@ -68,7 +68,8 @@ def verify(root, document=None):
         failures.append("Unbalanced code fences")
     if len(re.findall(r"^# ", specification, re.M)) != 1:
         failures.append("Expected exactly one document title")
-    if re.search(r"\btp\b|\bHuman board\b|\bAgent Costs\b|\bOverview\b", specification):
+    naming = specification.replace("`tk-scheduler`", "").replace("`tk` JavaScript API binding", "")
+    if re.search(r"\btk\b|\bHuman board\b|\bAgent Costs\b|\bOverview\b", naming):
         failures.append("Obsolete CLI or view naming remains")
     for name in ("Home", "Backlog", "Board", "Todos", "Graph", "Cost", "Settings", "System", "Workflows", "Evolution"):
         if not re.search(rf"^\| {name} \|", specification, re.M):
@@ -104,7 +105,7 @@ def verify(root, document=None):
     print("PASS: current document references exist; planned/API documents are explicit")
     print("PASS: directed workflow graph, GUI editor, seeded defaults and review-role wording")
     print("PASS: standalone product specification contains no ticket/source provenance")
-    print("PASS: tk CLI and canonical view naming")
+    print("PASS: tp CLI and canonical view naming")
     print("PASS: internal/local links, title, code fences, and SDLC prose checks")
 
 

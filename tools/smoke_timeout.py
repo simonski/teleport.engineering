@@ -44,7 +44,7 @@ def stop_group(process, deadline):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                            timeout=remaining(deadline, 1))
         return
-    # start_new_session gives this worker an owned process group, including tk
+    # start_new_session gives this worker an owned process group, including tp
     # serve and its command children. Never signal the caller's process group.
     for signum in (signal.SIGTERM, signal.SIGKILL):
         try:

@@ -1,4 +1,4 @@
-"""Generate a CycloneDX SBOM for tk and its bundled browser dependencies."""
+"""Generate a CycloneDX SBOM for tp and its bundled browser dependencies."""
 import argparse
 import base64
 import hashlib
@@ -110,7 +110,7 @@ def main():
             with tempfile.TemporaryDirectory(prefix="teleport-sbom-") as temporary:
                 output = Path(temporary) / "go.cdx.json"
                 subprocess.run(["go", "run", GENERATOR, "app", "-json", "-std", "-licenses",
-                        "-output-version", "1.6", "-main", "cmd/tk", "-output", str(output), str(ROOT)],
+                        "-output-version", "1.6", "-main", "cmd/tp", "-output", str(output), str(ROOT)],
                        cwd=ROOT, check=True)
                 cache.parent.mkdir(parents=True, exist_ok=True)
                 staged_cache = cache.with_suffix(".tmp")

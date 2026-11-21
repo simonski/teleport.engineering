@@ -69,20 +69,20 @@ func TestDefaultHelpListsCommandsAndNounHelpListsOnlyItsActions(t *testing.T) {
 				t.Errorf("overview missing %s", name)
 			}
 		}
-		if strings.Contains(text, "\n  tk ") || strings.Contains(text, "\n  agent ls ") || strings.Contains(text, "\n  ticket show ") {
+		if strings.Contains(text, "\n  tp ") || strings.Contains(text, "\n  agent ls ") || strings.Contains(text, "\n  ticket show ") {
 			t.Fatal("overview expanded action lists")
 		}
 	}
 	for _, arguments := range [][]string{{"agent"}, {"help", "agent"}} {
 		var output bytes.Buffer
 		_, done, err := expandCommand(arguments, &output)
-		if err != nil || !done || !strings.Contains(output.String(), "tk agent ls ") || strings.Contains(output.String(), "tk ticket show ") {
+		if err != nil || !done || !strings.Contains(output.String(), "tp agent ls ") || strings.Contains(output.String(), "tp ticket show ") {
 			t.Fatalf("wrong action list for %v: %v", arguments, err)
 		}
 	}
 	var full bytes.Buffer
 	_, _, err := expandCommand([]string{"commands"}, &full)
-	if err != nil || !strings.Contains(full.String(), "tk agent ls ") || !strings.Contains(full.String(), "tk ticket show ") {
+	if err != nil || !strings.Contains(full.String(), "tp agent ls ") || !strings.Contains(full.String(), "tp ticket show ") {
 		t.Fatal("explicit catalogue is incomplete")
 	}
 }

@@ -26,7 +26,7 @@ func personaArguments(raw string) ([]string, error) {
 	a := payload.Agent
 	var prompt strings.Builder
 	prompt.WriteString("Agent role: " + a.Name + "\nGoal: " + a.Goal + "\n" + a.Prompt)
-	prompt.WriteString("\nTeleport is a built-in skill for this session. Run `tk skill` to read its instructions before using Teleport; use the scoped session credentials and authority provided, if available.")
+	prompt.WriteString("\nTeleport is a built-in skill for this session. Run `tp skill` to read its instructions before using Teleport; use the scoped session credentials and authority provided, if available.")
 	if len(payload.Skills) > 0 {
 		prompt.WriteString("\nFor this role, read and apply the installed skill instructions when relevant:")
 		for _, path := range payload.Skills {
@@ -57,7 +57,7 @@ func personaArguments(raw string) ([]string, error) {
 		}
 		if payload.ProposalJob != nil {
 			job := payload.ProposalJob
-			instruction := fmt.Sprintf("Read `tk skill` when useful. Produce a proposal for ticket %d at version %d using the ticket context and any prior proposal and feedback. Return the requested JSON object with a title and items. Each item has a unique key, kind epic or task, title, description and criteria; tasks use parentKey referring to an earlier epic. Do not create tickets. Teleport will retain your proposal for human review.", job.TicketID, job.TicketVersion)
+			instruction := fmt.Sprintf("Read `tp skill` when useful. Produce a proposal for ticket %d at version %d using the ticket context and any prior proposal and feedback. Return the requested JSON object with a title and items. Each item has a unique key, kind epic or task, title, description and criteria; tasks use parentKey referring to an earlier epic. Do not create tickets. Teleport will retain your proposal for human review.", job.TicketID, job.TicketVersion)
 			args = append([]string{"exec", "--sandbox", "read-only", "--ignore-user-config"}, args...)
 			args = append(args, instruction)
 		}

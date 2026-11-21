@@ -27,9 +27,9 @@ def owned_command(source,installed):
     pid=int(owners.pop())
     files=subprocess.check_output(["lsof","-a","-p",str(pid),"-d","txt","-Fn"],text=True)
     if "n"+str(installed.resolve()) not in files.splitlines():
-        raise RuntimeError("Current database owner is not the selected installed tk binary")
+        raise RuntimeError("Current database owner is not the selected installed binary")
     command=shlex.split(subprocess.check_output(["ps","-p",str(pid),"-o","command="],text=True).strip())
-    if len(command)<2 or command[1]!="serve":raise RuntimeError("Database owner is not tk serve")
+    if len(command)<2 or command[1]!="serve":raise RuntimeError("Database owner is not running the serve command")
     if len(command)!=2:
         raise RuntimeError("Stop configured local servers explicitly before migration; process-list text cannot safely reconstruct quoted arguments")
     command[0]=str(installed)
@@ -69,7 +69,11 @@ def launch(command,log):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bridge",type=Path,required=True)
-    parser.add_argument("--installed",type=Path,default=Path(shutil.which("tk") or str(Path.home()/"go/bin/tk")))
+    # The file-backed source may still be served by the historical executable.
+    go_bin=Path.home()/"go/bin"
+    legacy_binary=go_bin/"tk"
+    default_binary=legacy_binary if legacy_binary.is_file() else go_bin/"tp"
+    parser.add_argument("--installed",type=Path,default=Path(shutil.which("tp") or shutil.which("tk") or default_binary))
     args=parser.parse_args()
     root=(Path.home()/".teleport").resolve()
     source=root/"database.db"
@@ -77,11 +81,11 @@ def main():
     if not source.is_file() or source.is_symlink():raise RuntimeError("A regular legacy local installation is required")
     if config.exists() or config.is_symlink():raise RuntimeError("Existing PostgreSQL configuration requires explicit operator reconciliation")
     installed=args.installed.absolute()
-    if installed.is_symlink() or not installed.is_file():raise RuntimeError("Installed tk must be a regular file")
+    if installed.is_symlink() or not installed.is_file():raise RuntimeError("Installed binary must be a regular file")
     pid,previous=owned_command(source,installed)
     archive=root/"migration"/(time.strftime("%Y%m%dT%H%M%SZ",time.gmtime())+"-local")
     archive.mkdir(mode=0o700,parents=True,exist_ok=False)
-    shutil.copy2(installed,archive/"previous-tk")
+    shutil.copy2(installed,archive/"previous-binary")
     pg_bin=binaries()
     socket=Path("/tmp")/("teleport-pg-"+str(os.getuid()))
     base=start(pg_bin,root/"postgres",socket)
@@ -94,8 +98,8 @@ def main():
     committed=False
     try:
         stop(pid,installed);stopped=True
-        with migration(args.bridge.resolve(),ROOT/"bin/tk",source,config,archive,on_abort=lambda:stop(process.pid) if process and process.poll() is None else None) as verified:
-            install(ROOT/"bin/tk",installed);changed=True
+        with migration(args.bridge.resolve(),ROOT/"bin/tp",source,config,archive,on_abort=lambda:stop(process.pid) if process and process.poll() is None else None) as verified:
+            install(ROOT/"bin/tp",installed);changed=True
             if previous:
                 command=[]
                 skip=False
@@ -135,7 +139,7 @@ def main():
         if committed:raise
         if process and process.poll() is None:stop(process.pid)
         if source.exists():
-            if changed:install(archive/"previous-tk",installed)
+            if changed:install(archive/"previous-binary",installed)
             if config.exists():config.replace(archive/"failed-database.json")
             if stopped and previous:launch(previous,root/"migration-server.log")
         raise

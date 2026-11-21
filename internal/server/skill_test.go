@@ -23,7 +23,7 @@ func TestSkillEndpointMatchesStandaloneBinaryArtifact(t *testing.T) {
 }
 
 func TestSkillExamplesUseRegisteredOperationsAndCurrentRequestSchemas(t *testing.T) {
-	commands := regexp.MustCompile(`(?m)^tk ([A-Za-z]+)(?: -{1,2}data '([^']+)')?$`).FindAllStringSubmatch(teleportskill.Markdown, -1)
+	commands := regexp.MustCompile(`(?m)^tp ([A-Za-z]+)(?: -{1,2}data '([^']+)')?$`).FindAllStringSubmatch(teleportskill.Markdown, -1)
 	checked := 0
 	for _, command := range commands {
 		name, data := command[1], command[2]

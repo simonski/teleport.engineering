@@ -13,9 +13,9 @@ def verify_camera_retained(browser):
                    for a, b in zip(before[field], after[field])), "Graph refresh moved " + field
 
 
-def verify_graph(browser, tk, project_id, ticket):
+def verify_graph(browser, tp, project_id, ticket):
     def call(operation, data):
-        return json.loads(tk(operation, "--data", json.dumps(data)))
+        return json.loads(tp(operation, "--data", json.dumps(data)))
 
     browser("select", "#project", str(project_id))
     browser("find", "role", "button", "click", "--name", "Graph", "--exact")

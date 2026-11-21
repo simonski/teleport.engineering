@@ -2,9 +2,9 @@
 import json
 
 
-def verify_project_directory(browser, tk, selected_project):
+def verify_project_directory(browser, tp, selected_project):
     def call(operation, data=None):
-        return json.loads(tk(operation, "--data", json.dumps(data or {})))
+        return json.loads(tp(operation, "--data", json.dumps(data or {})))
 
     projects = call("listProjects")["items"]
     other = next(project for project in projects if project["id"] != selected_project)

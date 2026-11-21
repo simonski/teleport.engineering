@@ -8,12 +8,12 @@ export DEPLOY_HOST DEPLOY_DIR DEPLOY_BUILDER DEPLOY_ADDR DEPLOY_PUBLIC_HOSTS
 export CONFIRM
 help:
 	@echo ""
-	@echo "build         Build bin/tk with a local build identity"
-	@echo "build-debug   Build bin/tk with native debugging information"
-	@echo "install       Build and install tk into GOBIN or GOPATH/bin"
+	@echo "build         Build bin/tp with a local build identity"
+	@echo "build-debug   Build bin/tp with native debugging information"
+	@echo "install       Build and install tp into GOBIN or GOPATH/bin"
 	@echo "sbom          Generate sbom.cdx.json for Go and bundled browser dependencies"
 	@echo "browser-tools Prepare the pinned persistent browser client"
-	@echo "deploy        Build Linux tk, scp to /home/exedev/teleport and start it"
+	@echo "deploy        Build Linux tp, scp to /home/exedev/teleport and start it"
 	@echo "deploy-reset  Replace the remote installation after CONFIRM=reset; retain a backup"
 	@echo "db-up         Start the private local PostgreSQL installation"
 	@echo "db-down       Stop local PostgreSQL without deleting data"
@@ -62,4 +62,4 @@ check-full:
 	$(MAKE) check-race
 clean:
 	go clean
-	rm -f bin/tk
+	rm -f bin/tp

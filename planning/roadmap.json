@@ -7,13 +7,13 @@
   },
   "goal": {
     "title": "Bootstrap teleport until the application can build itself",
-    "description": "Reduce the friction and human attention needed to capture intent, refine work and supervise native harness execution. MVP is the complete create-ticket to implemented-code loop using workflows, PTY, tk serve and tk agent. Waitlist, email, user inspection and additional harness providers are outside MVP. Directional outcome success remains separate from child delivery completion.",
+    "description": "Reduce the friction and human attention needed to capture intent, refine work and supervise native harness execution. MVP is the complete create-ticket to implemented-code loop using workflows, PTY, tp serve and tp agent. Waitlist, email, user inspection and additional harness providers are outside MVP. Directional outcome success remains separate from child delivery completion.",
     "criteria": "A human can create a ticket, refine its scope, invoke a native Codex session through teleport, inspect the prompt and PTY, review the exact code candidate and explicitly approve integration. Measure human attention and external-harness escapes without bypassing approval or deployment authority."
   },
   "epics": {
     "mvp": {
       "title": "MVP — create work and supervise implementation",
-      "description": "Deliver the self-hosting loop through workflows, native Codex PTY sessions, tk serve and tk agent. Build on existing capabilities and verify remaining gaps. No waitlist, email, user inspection, Claude, Copilot or Ollama implementation belongs to this phase.",
+      "description": "Deliver the self-hosting loop through workflows, native Codex PTY sessions, tp serve and tp agent. Build on existing capabilities and verify remaining gaps. No waitlist, email, user inspection, Claude, Copilot or Ollama implementation belongs to this phase.",
       "criteria": "The end-to-end ticket-to-reviewed-code loop is usable, inspectable, recoverable and cheap in human attention, with explicit gates for integration and deployment."
     },
     "later": {
@@ -32,7 +32,7 @@
     {
       "key": "self-hosting-mvp", "phase": "mvp",
       "title": "Complete the create-ticket to implemented-code bootstrap loop",
-      "scope": ["Use teleport to create a ticket and implement code through a configured workflow, native PTY harness, tk serve and tk agent.", "Keep setup and execution sufficiently direct that the application can develop itself; start from existing implementation rather than duplicating it.", "Exclude waitlist, email, user inspection, Claude, Copilot and Ollama from MVP."],
+      "scope": ["Use teleport to create a ticket and implement code through a configured workflow, native PTY harness, tp serve and tp agent.", "Keep setup and execution sufficiently direct that the application can develop itself; start from existing implementation rather than duplicating it.", "Exclude waitlist, email, user inspection, Claude, Copilot and Ollama from MVP."],
       "acceptance": ["A real ticket can proceed through scoped refinement, implementation, review and explicit human approval using the same visible prompt inside or outside teleport.", "PTY reconnect/stop, failure reporting and exact candidate review work without a provider API reimplementation.", "Integration and deployment retain separate explicit authorization."]
     },
     {
@@ -51,7 +51,7 @@
     {
       "key": "import-classify", "phase": "mvp",
       "title": "Import freeform text and iteratively propose goals",
-      "scope": ["Add tk import <file> and a Backlog import/upload action accepting a file or long-form pasted text.", "An agent classifies thoughts into proposed goals and identifies relevant existing epics/stories; optionally compare project documentation during refinement.", "Render proposed goals as graph-style cards with details, questions and clarifications on hover and equivalent keyboard access.", "Accept creates the goals and stops; accept-and-continue retains further refinement; refine accepts instructions such as merge 1/2/3 or split 5 and returns a revised proposal; cancel terminates the owned session.", "Accepting with unanswered questions is always possible; retain those questions on the resulting goals."],
+      "scope": ["Add tp import <file> and a Backlog import/upload action accepting a file or long-form pasted text.", "An agent classifies thoughts into proposed goals and identifies relevant existing epics/stories; optionally compare project documentation during refinement.", "Render proposed goals as graph-style cards with details, questions and clarifications on hover and equivalent keyboard access.", "Accept creates the goals and stops; accept-and-continue retains further refinement; refine accepts instructions such as merge 1/2/3 or split 5 and returns a revised proposal; cancel terminates the owned session.", "Accepting with unanswered questions is always possible; retain those questions on the resulting goals."],
       "acceptance": ["CLI and web share a versioned proposal/session contract and create no goals before explicit acceptance.", "Merge/split refinement preserves original intent and provenance; cancellation stops the owned session without orphan jobs.", "Partial failures and retries cannot duplicate accepted goals or lose unanswered questions."]
     },
     {
@@ -107,13 +107,13 @@
     {
       "key": "dedicated-sessions", "phase": "mvp",
       "title": "Provide dedicated stoppable harness sessions and an agent monitor",
-      "scope": ["Display detected harness sessions inside and outside wrappers in a parent/process hierarchy, including the current shell where detectable.", "Make owned wrapped sessions clickable to teleport, similar to the JavaScript console.", "A dedicated session selects harness, model and thinking, preloads allowed/denied rules and the tk skill, and offers a truthful stop control."],
+      "scope": ["Display detected harness sessions inside and outside wrappers in a parent/process hierarchy, including the current shell where detectable.", "Make owned wrapped sessions clickable to teleport, similar to the JavaScript console.", "A dedicated session selects harness, model and thinking, preloads allowed/denied rules and the tp skill, and offers a truthful stop control."],
       "acceptance": ["Owned sessions can be inspected, reattached and stopped without duplicate harness launches.", "Externally detected sessions are clearly distinguished from controllable owned wrappers; detection alone grants no takeover rights.", "MVP selects native Codex; other provider adapters remain deferred."]
     },
     {
       "key": "agent-client", "phase": "mvp",
-      "title": "Run tk agent as an API client around a native harness PTY",
-      "scope": ["Run a named agent binary against the tk server API with identity/password, project ownership and server URL; receive ticket and project context from the server.", "Use the same public primitives and tk skill/help as a human, with a stable server protocol and separately versioned provider-specific PTY adapters.", "Initially run on the same machine; retain a future remote-host boundary and fast, reliable builds.", "Use already authenticated native Codex through stdin/stdout, not direct provider API calls or provider credential setup.", "Support working directory and environment configuration, with the intended TELEPORT_USERNAME, TELEPORT_PASSWORD and TELEPORT_URL names documented."],
+      "title": "Run tp agent as an API client around a native harness PTY",
+      "scope": ["Run a named agent binary against the tp server API with identity/password, project ownership and server URL; receive ticket and project context from the server.", "Use the same public primitives and tp skill/help as a human, with a stable server protocol and separately versioned provider-specific PTY adapters.", "Initially run on the same machine; retain a future remote-host boundary and fast, reliable builds.", "Use already authenticated native Codex through stdin/stdout, not direct provider API calls or provider credential setup.", "Support working directory and environment configuration, with the intended TELEPORT_USERNAME, TELEPORT_PASSWORD and TELEPORT_URL names documented."],
       "acceptance": ["A preauthenticated Codex session receives the exact server-configured task prompt and reports liveness/input/outcomes through the API.", "Agent local state is limited to identity, connection and owned runtime metadata; project truth stays server-owned.", "Secrets remain outside arguments/history/logs; provider protocol failures are explicit and recoverable."]
     },
     {
@@ -144,15 +144,15 @@
     {
       "key": "email-daemon", "phase": "later",
       "title": "Run email delivery as an independently managed API client",
-      "scope": ["Add a tk emaild delivery worker configured by the server, using SMTP or stdout with encrypted stored credentials.", "The worker retrieves owned queued work through the API rather than opening application storage."],
+      "scope": ["Add a tp emaild delivery worker configured by the server, using SMTP or stdout with encrypted stored credentials.", "The worker retrieves owned queued work through the API rather than opening application storage."],
       "acceptance": ["Worker leases, outcomes, retries and shutdown preserve truthful queue ownership.", "Restarting the daemon does not silently resend an uncertain delivery.", "Configuration updates and credential rotation are authenticated and versioned."]
     },
     {
       "key": "service-components", "phase": "later",
       "title": "Run bundled server components together or independently",
-      "scope": ["Keep one tk binary with tk serve as the simple all-services entry point.", "Allow deliberate independent www, api, email worker and scheduler processes with server-owned configuration and explicit ownership."],
+      "scope": ["Keep one tp binary with tp serve as the simple all-services entry point.", "Allow deliberate independent www, api, email worker and scheduler processes with server-owned configuration and explicit ownership."],
       "acceptance": ["All-in-one and split topologies expose consistent APIs and authentication boundaries.", "Starting a component cannot duplicate scheduler/email ownership or make a client access storage directly.", "Startup, health, stop and unsupported configurations are documented and tested."],
-      "questions": ["The notes label tk email as both email and www. Settle the exact worker/subcommand naming before publishing the CLI contract."]
+      "questions": ["The notes label tp email as both email and www. Settle the exact worker/subcommand naming before publishing the CLI contract."]
     },
     {
       "key": "organisations", "phase": "later",

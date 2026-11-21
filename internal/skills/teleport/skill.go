@@ -1,4 +1,4 @@
-// Package teleportskill contains the standalone harness instructions shipped by tk.
+// Package teleportskill contains the standalone harness instructions shipped by tp.
 package teleportskill
 
 import _ "embed"

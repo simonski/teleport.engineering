@@ -124,7 +124,7 @@ func nativeSessionInstructions(role string) string {
 	if role == "Console" {
 		location = "Work in the provided project root."
 	}
-	return "\nThis is an owned teleport local harness. Read tk skill for supported context APIs. " + location + " Teleport human scope/code approval is never supplied by native OS permission or an agent. Direct terminal input is outside normal ticket supervision."
+	return "\nThis is an owned teleport local harness. Read tp skill for supported context APIs. " + location + " Teleport human scope/code approval is never supplied by native OS permission or an agent. Direct terminal input is outside normal ticket supervision."
 }
 
 func constrainNativePhase(role, method, cwd string, params map[string]any) {

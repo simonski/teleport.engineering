@@ -6,7 +6,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from capture_backlog import ROOT, capture, tk, validate
+from capture_backlog import ROOT, capture, tp, validate
 
 
 class Fixture:
@@ -109,17 +109,17 @@ class CaptureTest(unittest.TestCase):
     def test_cli_uses_structured_data_and_does_not_disclose_arguments_on_failure(self):
         data = {"title": "Private `literal` $(text) with a newline\n"}
         with patch("capture_backlog.subprocess.run", return_value=subprocess.CompletedProcess([], 0, '{"id":1}', "")) as run:
-            self.assertEqual(tk("createTicket", data), {"id": 1})
+            self.assertEqual(tp("createTicket", data), {"id": 1})
         self.assertEqual(run.call_args.args[0][1:3], ["createTicket", "-data"])
         self.assertEqual(json.loads(run.call_args.args[0][3]), data)
         with patch("capture_backlog.subprocess.run", return_value=subprocess.CompletedProcess([], 1, "", "private failure")):
             with self.assertRaises(RuntimeError) as failure:
-                tk("createTicket", data)
+                tp("createTicket", data)
         self.assertNotIn("Private", str(failure.exception))
         self.assertNotIn("private failure", str(failure.exception))
         with patch("capture_backlog.subprocess.run", side_effect=subprocess.TimeoutExpired(["private argument"], 15)):
             with self.assertRaises(RuntimeError) as failure:
-                tk("createTicket", data)
+                tp("createTicket", data)
         self.assertNotIn("private argument", str(failure.exception))
 
 

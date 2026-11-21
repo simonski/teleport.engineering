@@ -27,7 +27,7 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 		return err
 	}
 	if flags.NArg() != 0 {
-		return errors.New("usage: tk setup [-server URL] [-config FILE] [-json]")
+		return errors.New("usage: tp setup [-server URL] [-config FILE] [-json]")
 	}
 	*endpoint = strings.TrimRight(*endpoint, "/")
 	creds, err := readCredentials(*endpoint, *config)

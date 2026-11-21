@@ -16,7 +16,7 @@ import (
 	"teleport/internal/model"
 )
 
-var ErrUninitialized = errors.New("storage is not initialized; run tk init")
+var ErrUninitialized = errors.New("storage is not initialized; run tp init")
 var ErrDatabaseUnavailable = errors.New("could not connect to PostgreSQL; verify database configuration and service availability")
 
 type Store struct {

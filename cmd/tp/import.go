@@ -27,7 +27,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 	set.Usage = func() {
 		set.SetOutput(out)
 		defer set.SetOutput(io.Discard)
-		fmt.Fprintln(out, "Usage: tk import -project NAME [FILE]\n       tk import -project NAME -i\n       producer | tk import -project NAME")
+		fmt.Fprintln(out, "Usage: tp import -project NAME [FILE]\n       tp import -project NAME -i\n       producer | tp import -project NAME")
 		fmt.Fprintln(out, "Capture text as an Idea; no classifier, goal creation or harness is started.")
 		fmt.Fprintf(out, "Multiline text is preserved exactly, up to %s UTF-8 bytes; Ctrl-D finishes terminal input.\n", "20,000")
 		set.PrintDefaults()
@@ -40,7 +40,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 		return err
 	}
 	if len(files) > 1 || *stdin && len(files) != 0 {
-		return errors.New("choose exactly one text source: tk import FILE or tk import -i")
+		return errors.New("choose exactly one text source: tp import FILE or tp import -i")
 	}
 	if strings.TrimSpace(*project) == "" || len(strings.TrimSpace(*title)) > 500 || len(*request) > 100 || strings.ContainsRune(*request, 0) || *request != "" && strings.TrimSpace(*request) == "" {
 		return errors.New("provide -project NAME, a title up to 500 bytes and request ID up to 100 bytes")

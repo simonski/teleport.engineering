@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     node = shutil.which("node")
     if not node:
-        raise SystemExit("Node.js is required for development JavaScript checks (not for running tk)")
+        raise SystemExit("Node.js is required for development JavaScript checks (not for running tp)")
     sources = sorted((ROOT / "internal/server/web").glob("*.js"))
     subprocess.run([node, "--experimental-vm-modules", "--no-warnings", str(ROOT / "tools/web_syntax.cjs"), *map(str, sources)], check=True)
     tests = sorted((ROOT / "internal/server/webtests").glob("*_test.cjs"))

@@ -44,8 +44,8 @@ def main(database_url=None):
                 raise RuntimeError(result.stderr or result.stdout)
             return result.stdout
 
-        def tk(*arguments, fail=False, input=None):
-            result = subprocess.run([str(ROOT / "bin/tk"), *arguments], env=environment, text=True, input=input, capture_output=True, timeout=30)
+        def tp(*arguments, fail=False, input=None):
+            result = subprocess.run([str(ROOT / "bin/tp"), *arguments], env=environment, text=True, input=input, capture_output=True, timeout=30)
             if fail:
                 assert result.returncode != 0, result.stdout
                 return result.stderr
@@ -54,17 +54,17 @@ def main(database_url=None):
             return result.stdout
 
         def api(operation, data=None):
-            return json.loads(tk(operation, "--data", json.dumps(data or {}), "-json"))
+            return json.loads(tp(operation, "--data", json.dumps(data or {}), "-json"))
 
         def start():
             nonlocal process
-            process = subprocess.Popen([str(ROOT / "bin/tk"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            process = subprocess.Popen([str(ROOT / "bin/tp"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
                 try:
                     with urllib.request.urlopen(endpoint + "/healthz", timeout=1) as response:
                         if response.status == 200:
-                            tk("login", "--password-stdin", input="password\n")
+                            tp("login", "--password-stdin", input="password\n")
                             return api("getSession")
                 except OSError:
                     pass
@@ -82,7 +82,7 @@ def main(database_url=None):
 
         try:
             if args.stop_feedback_only:
-                assert "Initialization complete" in tk("init")
+                assert "Initialization complete" in tp("init")
                 start()
                 browser("open", endpoint)
                 browser("fill", 'input[name="username"]', "admin")
@@ -106,7 +106,7 @@ def main(database_url=None):
                 external = subprocess.Popen([str(native), "app-server"], env=fixture_env, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 forced = subprocess.Popen([str(native), "app-server"], env=fixture_env, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 try:
-                    assert "Initialization complete" in tk("init")
+                    assert "Initialization complete" in tp("init")
                     start()
                     browser("open", endpoint)
                     browser("fill", 'input[name="username"]', "admin")
@@ -152,7 +152,7 @@ def main(database_url=None):
                             child.terminate()
                             child.wait(timeout=5)
             if args.root_only:
-                assert "Initialization complete" in tk("init")
+                assert "Initialization complete" in tp("init")
                 start()
                 browser("open", endpoint)
                 browser("fill", 'input[name="username"]', "admin")
@@ -182,12 +182,12 @@ def main(database_url=None):
                 browser("screenshot", "/tmp/teleport-project-root.png")
                 print("PASS: browser project root defaults, creation, and worktree-free project settings", flush=True)
                 return
-            assert "Initialization complete" in tk("init")
+            assert "Initialization complete" in tp("init")
             first = start()
             assert api("listProjects")["items"] == []
-            project = json.loads(tk("setup", "-json", input="Fixture project\n2\nkeep\n"))
+            project = json.loads(tp("setup", "-json", input="Fixture project\n2\nkeep\n"))
             assert project["name"] == "Teleport" and project["maxAgents"] == 2
-            assert "already exists" in tk("setup", fail=True)
+            assert "already exists" in tp("setup", fail=True)
             api("createTicket", {"projectId": project["id"], "title": "Fixture human task", "agent": False, "requestId": "init-task"})
             assert not first["settings"]["agents"]
             if args.browser:
@@ -207,24 +207,24 @@ def main(database_url=None):
                     verify_location(browser, api, project)
                 browser("close")
                 project = api("listProjects")["items"][0]
-            tk("init", fail=True)
+            tp("init", fail=True)
             assert api("getSession")["installationId"] == first["installationId"]
             api("saveProject", {"id": project["id"], "expectedVersion": project["version"], "description": "Human-edited sample"})
             disposable = api("createProject", {"name": "Disposable", "requestId": "disposable-project"})
             api("createTicket", {"projectId": disposable["id"], "title": "Temporary work", "requestId": "disposable-ticket"})
             api("saveIdea", {"projectId": disposable["id"], "title": "Temporary idea", "text": "test", "requestId": "disposable-idea"})
-            tk("project", "rm", "Disposable", fail=True, input="no\n")
+            tp("project", "rm", "Disposable", fail=True, input="no\n")
             assert len(api("listProjects")["items"]) == 2
-            tk("project", "rm", "Disposable", input="Disposable\n")
+            tp("project", "rm", "Disposable", input="Disposable\n")
             assert [p["id"] for p in api("listProjects")["items"]] == [project["id"]]
             stop()
-            tk("init")
+            tp("init")
             again = start()
             assert again["installationId"] == first["installationId"]
             assert api("listProjects")["items"][0]["description"] == "Human-edited sample"
             stop()
-            assert "flag provided but not defined" in tk("init", "-f", fail=True)
-            assert "flag provided but not defined" in tk("init", "-demo", fail=True)
+            assert "flag provided but not defined" in tp("init", "-f", fail=True)
+            assert "flag provided but not defined" in tp("init", "-demo", fail=True)
             print("PASS: PostgreSQL bootstrap, idempotent human edits, API hierarchy, owned-init refusal and removed reset refusal", flush=True)
         except Exception:
             if args.browser:

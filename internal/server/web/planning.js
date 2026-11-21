@@ -51,7 +51,7 @@ function finderActions(query){
     {title:'Browse projects',keywords:'project directory manage list',run:()=>openProjectDirectory()},
     {title:'Harness sessions',keywords:'agent terminal session inspect list manage',run:()=>sessionSwitcher()},
     {title:'Start or attach default harness',keywords:'agent codex claude copilot terminal session run',run:()=>chooseHarness()},
-    {title:'Open tk console',keywords:'command terminal cli',run:()=>openScriptConsole()},
+    {title:'Open tp console',keywords:'command terminal cli',run:()=>openScriptConsole()},
     {title:'Settings',keywords:'account appearance harness preferences',run:()=>openPersonalSettings()},
     {title:'System settings',keywords:'execution agent harness mode',run:()=>openSystemSettings()},
     ...(projectId?[{title:'Project settings',keywords:'project harness execution agent configuration',run:()=>openProjectSettings()}]:[]),

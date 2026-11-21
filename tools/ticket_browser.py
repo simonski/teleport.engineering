@@ -61,7 +61,7 @@ def verify_todo_menu(browser, project_id, ticket, refine_ticket):
     browser("click", '[data-ticket-agent="refine"]')
     browser("wait", "--fn", f'tickets.some(t=>t.id==={refine_ticket["id"]}&&t.agent&&t.status==="Refine")')
 
-def verify_shortcut_project(browser, tk, project_id):
+def verify_shortcut_project(browser, tp, project_id):
     browser("eval", "document.querySelector('#cookie-notice [data-storage=reject]')?.click()")
     browser("wait", "#project + .choice-button")
     browser("select", "#project", str(project_id))
@@ -73,7 +73,7 @@ def verify_shortcut_project(browser, tk, project_id):
     browser("click", '#editor button[type="submit"]')
     browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
     browser("wait", "--fn", "document.querySelector('#notice')?.textContent==='Ticket created'")
-    items = json.loads(tk("listTickets", "--data", json.dumps({"projectId": project_id})))['items']
+    items = json.loads(tp("listTickets", "--data", json.dumps({"projectId": project_id})))['items']
     assert any(item['title'] == 'Shortcut project proof' and item['projectId'] == project_id for item in items)
     browser("select", "#project", "0")
     browser("eval", "document.activeElement?.blur()")
@@ -87,9 +87,9 @@ def verify_shortcut_project(browser, tk, project_id):
     browser("eval", "roleAllowsWrite=window.ticketProofRole;if(document.querySelector('tk-dialog[open]')||!document.querySelector('#notice').textContent.includes('does not permit'))throw new Error('Read-only project did not refuse creation')")
 
 
-def verify_ticket_keyboard(browser, tk, project_id):
+def verify_ticket_keyboard(browser, tp, project_id):
     def call(operation, data):
-        return json.loads(tk(operation, "--data", json.dumps(data)))
+        return json.loads(tp(operation, "--data", json.dumps(data)))
 
     def focused(ticket):
         browser("eval", f"if(document.activeElement?.dataset.ticket!=={json.dumps(str(ticket['id']))})throw new Error('Wrong ticket focus '+JSON.stringify({{actual:document.activeElement?.dataset.ticket,expected:{ticket['id']},foreground:!!foregroundOpen(),lanes:[...document.querySelectorAll('.board .lane')].map(lane=>[...lane.querySelectorAll('.ticket-open')].map(node=>node.dataset.ticket))}}))")

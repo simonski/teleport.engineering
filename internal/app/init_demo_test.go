@@ -18,7 +18,7 @@ func TestExistingSimulationCannotLaunchBindOrTransferToRealProject(t *testing.T)
 		t.Fatal(err)
 	}
 	svc := app.New(db)
-	svc.ConfigureLocalRuntime(t.TempDir(), "/missing/tk", true)
+	svc.ConfigureLocalRuntime(t.TempDir(), "/missing/tp", true)
 	login, err := svc.Call(ctx, "", "login", []byte(`{"username":"admin","password":"password"}`))
 	if err != nil {
 		t.Fatal(err)

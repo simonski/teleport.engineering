@@ -65,7 +65,7 @@ func TestDatabaseConnectionFailureProvidesSafeRecoveryAdvice(t *testing.T) {
 		t.Run(command, func(t *testing.T) {
 			t.Setenv("TELEPORT_DB", "postgresql://owner:private-password@127.0.0.1:1/teleport?connect_timeout=1")
 			err := run([]string{command})
-			if err == nil || !strings.Contains(err.Error(), "make db-up") || !strings.Contains(err.Error(), "external database") || !strings.Contains(err.Error(), "retry tk "+command) {
+			if err == nil || !strings.Contains(err.Error(), "make db-up") || !strings.Contains(err.Error(), "external database") || !strings.Contains(err.Error(), "retry tp "+command) {
 				t.Fatalf("missing recovery advice: %v", err)
 			}
 			if strings.Contains(err.Error(), "private-password") {

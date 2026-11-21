@@ -2,7 +2,7 @@
 import json
 
 
-def verify_navigation(browser, tk, project_id):
+def verify_navigation(browser, tp, project_id):
     # Preference-only polls deliberately retain the content/session snapshot.
     # Observe the completed network read rather than waiting for that snapshot
     # to acquire a revision that does not require a content refresh.
@@ -17,7 +17,7 @@ def verify_navigation(browser, tk, project_id):
         browser("wait", "--fn", "!preferenceSaving&&!Object.keys(preferenceDraft).length")
 
     def prefs():
-        return json.loads(tk("getViewPreferences"))
+        return json.loads(tp("getViewPreferences"))
 
     def visible():
         return json.loads(browser("eval", "[...document.querySelectorAll('#nav-views [data-view]')].map(node=>node.dataset.view)"))
@@ -36,7 +36,7 @@ def verify_navigation(browser, tk, project_id):
     browser("press", "Alt+Shift+ArrowLeft")
     saved()
     assert visible()[0] == "Backlog" and prefs()["navigationOrder"][0] == "Backlog"
-    revision = json.loads(tk("getSession"))["revision"]
+    revision = json.loads(tp("getSession"))["revision"]
     observed(revision)
     browser("eval", "if(document.activeElement?.dataset.view!=='Backlog')throw new Error('Preference refresh lost keyboard tab focus')")
     browser("eval", "if(document.querySelector('[aria-current=page]')?.dataset.view!=='Home')throw new Error('Reorder navigated away')")
@@ -61,7 +61,7 @@ def verify_navigation(browser, tk, project_id):
     browser("eval", "if(document.documentElement.dataset.navigation!=='left'||window.navigationMain!==document.querySelector('main'))throw new Error('Layout replaced content')")
     browser("press", "Escape")
     assert prefs()["navigationPosition"] == "left"
-    revision = json.loads(tk("getSession"))["revision"]
+    revision = json.loads(tp("getSession"))["revision"]
     observed(revision)
     browser("eval", "if(document.activeElement!==document.querySelector('#account'))throw new Error('Background preference refresh lost popup return focus')")
     browser("screenshot", "/tmp/teleport-navigation-left.png")
@@ -99,14 +99,14 @@ def verify_navigation(browser, tk, project_id):
     browser("click", "#navigation-reset"); saved(); browser("press", "Escape")
     assert visible() == expected and prefs()["navigationPosition"] == "top" and not prefs()["navigationCollapsed"]
 
-    projects_before = json.loads(tk("listProjects"))["items"]
+    projects_before = json.loads(tp("listProjects"))["items"]
     browser("click", "#project + .choice-button")
     browser("eval", "if(!document.querySelector('.choice-group[aria-label=\"New project\"]')||!document.querySelector('.choice-list [data-value=\"manage-projects\"]'))throw new Error('Missing project creation/directory section')")
     browser("click", '.choice-list [data-value="new-project"]')
     browser("wait", '#editor [name="name"]')
     browser("eval", "if(document.activeElement!==document.querySelector('#editor [name=name]'))throw new Error('New project text entry not focused')")
     browser("press", "Escape")
-    assert json.loads(tk("listProjects"))["items"] == projects_before
+    assert json.loads(tp("listProjects"))["items"] == projects_before
     assert json.loads(browser("eval", "document.querySelector('#project').value")) == str(project_id)
     browser("eval", "if(window.__navigationOriginalFetch)window.fetch=window.__navigationOriginalFetch;delete window.__navigationOriginalFetch;delete window.__navigationObservedRevision")
     print("PASS: canonical/private navigation order, real keyboard/pointer reorder, cancelled drag, left/right collapse, reload/mobile layout and grouped project creation without publication")

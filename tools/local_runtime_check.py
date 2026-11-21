@@ -84,8 +84,8 @@ def main(database_url=None):
     browser_name = f"teleport-terminal-{port}"
     browser_open = False
 
-    def tk(operation, data=None):
-        command = [str(ROOT / "bin/tk"), operation, "-json"]
+    def tp(operation, data=None):
+        command = [str(ROOT / "bin/tp"), operation, "-json"]
         if data is not None:
             command += ["--data", json.dumps(data)]
         result = subprocess.run(command, env=environment, text=True, capture_output=True, timeout=15)
@@ -103,7 +103,7 @@ def main(database_url=None):
         raise AssertionError("local terminal proof timed out")
 
     def serve():
-        server = subprocess.Popen([str(ROOT / "bin/tk"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime"), "--enable-terminal-fixture"], env=environment, stdout=subprocess.DEVNULL, stderr=open(folder / "server.log", "w"))
+        server = subprocess.Popen([str(ROOT / "bin/tp"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime"), "--enable-terminal-fixture"], env=environment, stdout=subprocess.DEVNULL, stderr=open(folder / "server.log", "w"))
         def ready():
             try:
                 with urllib.request.urlopen(endpoint + "/healthz", timeout=1) as response:
@@ -120,9 +120,9 @@ def main(database_url=None):
         return result.stdout
 
     try:
-        subprocess.run([str(ROOT / "bin/tk"), "init"], env=environment, check=True, capture_output=True, timeout=15)
+        subprocess.run([str(ROOT / "bin/tp"), "init"], env=environment, check=True, capture_output=True, timeout=15)
         process = serve()
-        subprocess.run([str(ROOT / "bin/tk"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=15)
+        subprocess.run([str(ROOT / "bin/tp"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=15)
         repository = folder / "repository"
         repository.mkdir()
         def git_output(root, *arguments):
@@ -133,36 +133,36 @@ def main(database_url=None):
         (repository / "fixture.txt").write_text("owned terminal proof\n")
         git("add", "fixture.txt")
         git("commit", "-m", "Seed terminal fixture")
-        project = tk("createProject", {"name": "Terminal proof", "key": "terminal-" + uuid.uuid4().hex[:12], "requestId": "terminal-project"})
-        project = tk("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repository), "storageRoot": str(folder / "worktrees")})
+        project = tp("createProject", {"name": "Terminal proof", "key": "terminal-" + uuid.uuid4().hex[:12], "requestId": "terminal-project"})
+        project = tp("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repository), "storageRoot": str(folder / "worktrees")})
         if args.shell_pty or args.codex_pty or args.harness_pty:
             capacity = {"projectId": project["id"], "expectedVersion": project["version"], "refineWorkers": 1, "doingWorkers": 1, "maxAgents": 0 if args.shell_pty else 2}
             if args.codex_pty or args.harness_pty:
                 capacity["allowedHarnesses"] = [args.harness_pty or "codex"]
-            project = tk("setLaneCapacity", capacity)
+            project = tp("setLaneCapacity", capacity)
         if args.native_startup_only:
             config = folder / "isolated-codex" / "config.toml"
             config.write_text("[projects." + json.dumps(str(folder.resolve())) + "]\ntrust_level = \"untrusted\"\n[projects." + json.dumps(str(repository.resolve())) + "]\ntrust_level = \"trusted\"\n")
         if args.proposal_only:
-            definition = tk("saveAgentDefinition", {"name":"Fixture planner","goal":"Propose a breakdown","prompt":"","skills":[],"harness":args.proposal_harness,"model":"fixture-model","thinking":"high","requestId":"planner"})
-            ticket = tk("createTicket", {"projectId":project["id"],"title":"Planning source","agent":False,"requestId":"planning-source"})
+            definition = tp("saveAgentDefinition", {"name":"Fixture planner","goal":"Propose a breakdown","prompt":"","skills":[],"harness":args.proposal_harness,"model":"fixture-model","thinking":"high","requestId":"planner"})
+            ticket = tp("createTicket", {"projectId":project["id"],"title":"Planning source","agent":False,"requestId":"planning-source"})
             if args.browser:
-                move_destination = tk("createProject", {"name":"Move destination","requestId":"move-destination"})
-                move_parent = tk("createTicket", {"projectId":project["id"],"kind":"epic","title":"Move parent","agent":False,"requestId":"move-parent"})
-                move_story = tk("createTicket", {"projectId":project["id"],"parentId":move_parent["id"],"title":"Move story","agent":False,"requestId":"move-story"})
-                move_sibling = tk("createTicket", {"projectId":project["id"],"parentId":move_parent["id"],"title":"Move sibling","agent":False,"requestId":"move-sibling"})
-            usage = tk("saveAgentUsage", {"projectId":project["id"],"name":"Plan","agentId":definition["id"],"kind":"todo-proposal","view":"Todos","workflow":ticket["workflow"],"phase":ticket["phase"],"enabled":True,"requestId":"planning-usage"})
+                move_destination = tp("createProject", {"name":"Move destination","requestId":"move-destination"})
+                move_parent = tp("createTicket", {"projectId":project["id"],"kind":"epic","title":"Move parent","agent":False,"requestId":"move-parent"})
+                move_story = tp("createTicket", {"projectId":project["id"],"parentId":move_parent["id"],"title":"Move story","agent":False,"requestId":"move-story"})
+                move_sibling = tp("createTicket", {"projectId":project["id"],"parentId":move_parent["id"],"title":"Move sibling","agent":False,"requestId":"move-sibling"})
+            usage = tp("saveAgentUsage", {"projectId":project["id"],"name":"Plan","agentId":definition["id"],"kind":"todo-proposal","view":"Todos","workflow":ticket["workflow"],"phase":ticket["phase"],"enabled":True,"requestId":"planning-usage"})
             def run_proposal(request_id, previous=None):
                 nonlocal session_id
                 launch = {"projectId":project["id"],"agentId":definition["id"],"expectedVersion":definition["version"],"ticketId":ticket["id"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":request_id}
                 if previous: launch["proposalPreviousId"] = previous
-                row = tk("openAgentSession", launch)
+                row = tp("openAgentSession", launch)
                 session_id = row["id"]
-                finished = wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == row["id"] and item["state"] == "exited"), None))
-                proposals = tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]
+                finished = wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == row["id"] and item["state"] == "exited"), None))
+                proposals = tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]
                 if not proposals or not proposals[-1]["ready"]:
                     import base64
-                    output = base64.b64decode(tk("attachSession", {"id":row["id"]}).get("data", "")).decode(errors="replace")
+                    output = base64.b64decode(tp("attachSession", {"id":row["id"]}).get("data", "")).decode(errors="replace")
                     raise AssertionError(f"proposal session failed: {finished}; terminal: {output}")
                 return proposals[-1]
             if args.browser:
@@ -193,7 +193,7 @@ def main(database_url=None):
                 browser("click", f'[data-ticket-card="{ticket["id"]}"] [data-session]')
                 browser("wait", '.xterm-screen')
                 browser("press", "Escape")
-                first = wait_for(lambda: (items[-1] if len(items := tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 1 and items[-1]["ready"] else None))
+                first = wait_for(lambda: (items[-1] if len(items := tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 1 and items[-1]["ready"] else None))
                 session_id = first["sessionId"]
                 browser("wait", f'[data-ticket-card="{ticket["id"]}"] [data-proposal-review]')
                 browser("click", f'[data-ticket-card="{ticket["id"]}"] [data-proposal-review]')
@@ -201,43 +201,43 @@ def main(database_url=None):
                 browser("fill", '#editor [name="feedback"]', "Split the epic")
                 browser("click", '#editor button[type="submit"]')
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open]')?.textContent.includes('Split the epic')")
-                assert tk("listTicketProposals", {"ticketId":ticket["id"]})["items"][-1]["feedback"][0]["itemKey"] == "e"
+                assert tp("listTicketProposals", {"ticketId":ticket["id"]})["items"][-1]["feedback"][0]["itemKey"] == "e"
                 browser("find", "role", "button", "click", "--name", "Revise with feedback", "--exact")
-                second = wait_for(lambda: (items[-1] if len(items := tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 2 and items[-1]["ready"] else None))
+                second = wait_for(lambda: (items[-1] if len(items := tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 2 and items[-1]["ready"] else None))
                 session_id = second["sessionId"]
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open]')?.textContent.includes('Revised epic')")
                 browser("screenshot", "/tmp/teleport-proposal-review.png")
                 browser("click", '#discard-proposals')
                 browser("click", '#editor button[type="submit"]')
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open] details summary')?.textContent.includes('Discarded proposals (2)')")
-                discarded = tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]
+                discarded = tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]
                 assert all(item.get("discardedBy") for item in discarded)
                 browser("press", "Escape")
                 browser("wait", "--fn", f'!document.querySelector(\'[data-ticket-card="{ticket["id"]}"] [data-proposal-review]\')')
                 browser("eval", f'document.querySelector({json.dumps(card)}).focus()')
                 browser("press", "Shift+F10"); browser("wait", '[data-ticket-menu="agents"]'); browser("click", '[data-ticket-menu="agents"]'); browser("wait", '[data-agent-usage]'); browser("click", '[data-agent-usage]')
-                fresh = wait_for(lambda: (items[-1] if len(items := tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 3 and items[-1]["ready"] else None))
+                fresh = wait_for(lambda: (items[-1] if len(items := tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == 3 and items[-1]["ready"] else None))
                 assert not fresh.get("previousId") and fresh["items"][0]["title"] == "Proposed epic"
                 browser("wait", '[data-proposal-accept]')
                 browser("click", '[data-proposal-accept]')
                 browser("check", '#editor input[type="checkbox"]')
                 browser("click", '#editor button[type="submit"]')
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open]')?.textContent.includes('Accepted')")
-                accepted = tk("listTicketProposals", {"ticketId":ticket["id"]})["items"][-1]
+                accepted = tp("listTicketProposals", {"ticketId":ticket["id"]})["items"][-1]
             else:
                 first = run_proposal("planning-run")
-                first = tk("commentTicketProposal", {"ticketId":ticket["id"],"proposalId":first["id"],"expectedVersion":first["version"],"requestId":"planning-feedback","text":"Split the epic"})
+                first = tp("commentTicketProposal", {"ticketId":ticket["id"],"proposalId":first["id"],"expectedVersion":first["version"],"requestId":"planning-feedback","text":"Split the epic"})
                 second = run_proposal("planning-rerun", first["id"])
-                accepted = tk("acceptTicketProposal", {"ticketId":ticket["id"],"proposalId":second["id"],"expectedVersion":second["version"],"expectedTicketVersion":ticket["version"]})
+                accepted = tp("acceptTicketProposal", {"ticketId":ticket["id"],"proposalId":second["id"],"expectedVersion":second["version"],"expectedTicketVersion":ticket["version"]})
             assert second["previousId"] == first["id"] and second["items"][0]["title"] == "Revised epic"
             assert first["items"][0]["title"] == "Proposed epic" and not first.get("createdIds")
-            assert len(accepted["createdIds"]) == 2 and tk("getTicket", {"id":accepted["createdIds"][1]})["parentId"] == accepted["createdIds"][0]
-            assert tk("getTicket", {"id":ticket["id"]})["version"] == ticket["version"]
-            summary = tk("getUsageSummary", {"projectId":project["id"]})
+            assert len(accepted["createdIds"]) == 2 and tp("getTicket", {"id":accepted["createdIds"][1]})["parentId"] == accepted["createdIds"][0]
+            assert tp("getTicket", {"id":ticket["id"]})["version"] == ticket["version"]
+            summary = tp("getUsageSummary", {"projectId":project["id"]})
             totals = next(window for window in summary["windows"] if window["name"] == "all")
             assert totals["invocations"] == (3 if args.browser else 2) and totals["succeeded"] == (3 if args.browser else 2) and totals["tokens"] == (450 if args.browser else 300)
-            failing = tk("saveAgentDefinition", {"name":"Failing planner","goal":"fixture-failure","prompt":"","skills":[],"harness":args.proposal_harness,"requestId":"failing-planner"})
-            failing_usage = tk("saveAgentUsage", {"projectId":project["id"],"name":"Fail","agentId":failing["id"],"kind":"todo-proposal","view":"Todos","workflow":ticket["workflow"],"phase":ticket["phase"],"enabled":True,"requestId":"failing-usage"})
+            failing = tp("saveAgentDefinition", {"name":"Failing planner","goal":"fixture-failure","prompt":"","skills":[],"harness":args.proposal_harness,"requestId":"failing-planner"})
+            failing_usage = tp("saveAgentUsage", {"projectId":project["id"],"name":"Fail","agentId":failing["id"],"kind":"todo-proposal","view":"Todos","workflow":ticket["workflow"],"phase":ticket["phase"],"enabled":True,"requestId":"failing-usage"})
             if args.browser:
                 browser("press", "Escape")
                 browser("wait", "--fn", f'!document.querySelector(\'[data-ticket-card="{ticket["id"]}"] [data-proposal-review]\')')
@@ -250,14 +250,14 @@ def main(database_url=None):
                 browser("wait", '#terminal-retry')
                 browser("click", '#terminal-retry')
                 browser("wait", '#terminal-retry')
-                wait_for(lambda: next((window for window in tk("getUsageSummary", {"projectId":project["id"]})["windows"] if window["name"] == "all" and window["failed"] == 2), None))
+                wait_for(lambda: next((window for window in tp("getUsageSummary", {"projectId":project["id"]})["windows"] if window["name"] == "all" and window["failed"] == 2), None))
             else:
-                failed = tk("openAgentSession", {"projectId":project["id"],"agentId":failing["id"],"expectedVersion":failing["version"],"ticketId":ticket["id"],"usageId":failing_usage["id"],"usageVersion":failing_usage["version"],"requestId":"failing-run"})
+                failed = tp("openAgentSession", {"projectId":project["id"],"agentId":failing["id"],"expectedVersion":failing["version"],"ticketId":ticket["id"],"usageId":failing_usage["id"],"usageVersion":failing_usage["version"],"requestId":"failing-run"})
                 session_id = failed["id"]
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == failed["id"] and item["state"] == "exited"), None))
-            totals = next(window for window in tk("getUsageSummary", {"projectId":project["id"]})["windows"] if window["name"] == "all")
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == failed["id"] and item["state"] == "exited"), None))
+            totals = next(window for window in tp("getUsageSummary", {"projectId":project["id"]})["windows"] if window["name"] == "all")
             assert totals["invocations"] == (5 if args.browser else 3) and totals["failed"] == (2 if args.browser else 1) and totals["tokens"] == (750 if args.browser else 450)
-            assert len(tk("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == (3 if args.browser else 2)
+            assert len(tp("listTicketProposals", {"ticketId":ticket["id"]})["items"]) == (3 if args.browser else 2)
             if args.browser:
                 browser("press", "Escape")
                 move_card = f'.ticket-open[data-ticket="{move_story["id"]}"]'
@@ -266,9 +266,9 @@ def main(database_url=None):
                 browser("click", f'[data-ticket-project="{move_destination["id"]}"]')
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open]')?.textContent.includes('2 stories and 1 parent ticket')")
                 browser("click", '#editor button[type="submit"]')
-                wait_for(lambda: tk("getTicket", {"id":move_story["id"]})["projectId"] == move_destination["id"])
-                assert tk("getTicket", {"id":move_parent["id"]})["projectId"] == move_destination["id"] and tk("getTicket", {"id":move_sibling["id"]})["projectId"] == move_destination["id"]
-            tk("shutdownLocalRuntime", {"confirm":True})
+                wait_for(lambda: tp("getTicket", {"id":move_story["id"]})["projectId"] == move_destination["id"])
+                assert tp("getTicket", {"id":move_parent["id"]})["projectId"] == move_destination["id"] and tp("getTicket", {"id":move_sibling["id"]})["projectId"] == move_destination["id"]
+            tp("shutdownLocalRuntime", {"confirm":True})
             clean = True
             print("PASS: proposal PTY, persisted feedback, revision and idempotent human acceptance; no model calls")
             return
@@ -276,55 +276,55 @@ def main(database_url=None):
             git("checkout", "-b", "console-feature")
         if args.spellcheck:
             skill_text = "---\nname: proof-skill\ndescription: Test skill.\n---\n\nCorrect spelling.\n"
-            skill = tk("saveInstalledSkill", {"name":"proof-skill","content":skill_text})
+            skill = tp("saveInstalledSkill", {"name":"proof-skill","content":skill_text})
             initial_hash = skill["hash"]
-            assert tk("getInstalledSkill", {"name":"proof-skill"})["content"] == skill_text
+            assert tp("getInstalledSkill", {"name":"proof-skill"})["content"] == skill_text
             skill_text += "Keep meaning.\n"
-            skill = tk("saveInstalledSkill", {"name":"proof-skill","content":skill_text,"expectedHash":skill["hash"]})
+            skill = tp("saveInstalledSkill", {"name":"proof-skill","content":skill_text,"expectedHash":skill["hash"]})
             try:
-                tk("saveInstalledSkill", {"name":"proof-skill","content":skill_text+"conflicting edit\n","expectedHash":initial_hash})
+                tp("saveInstalledSkill", {"name":"proof-skill","content":skill_text+"conflicting edit\n","expectedHash":initial_hash})
                 raise AssertionError("stale skill edit was accepted")
             except RuntimeError as error:
                 assert "changed" in str(error)
-            assert "proof-skill" in tk("listInstalledAgentSkills")["items"]
-            agent = tk("saveAgentDefinition", {"name":"Fixture spellchecker","goal":"Correct spelling","prompt":"Preserve meaning","skills":["proof-skill"],"harness":"codex","model":"fixture-model","requestId":"spell-agent"})
-            usage = tk("saveAgentUsage", {"projectId":project["id"],"name":"Spellcheck","agentId":agent["id"],"enabled":True,"requestId":"spell-usage"})
-            ticket = tk("createTicket", {"projectId":project["id"],"title":"Fix teh issue","description":"Check teh text","agent":False,"kind":"task","requestId":"spell-ticket"})
+            assert "proof-skill" in tp("listInstalledAgentSkills")["items"]
+            agent = tp("saveAgentDefinition", {"name":"Fixture spellchecker","goal":"Correct spelling","prompt":"Preserve meaning","skills":["proof-skill"],"harness":"codex","model":"fixture-model","requestId":"spell-agent"})
+            usage = tp("saveAgentUsage", {"projectId":project["id"],"name":"Spellcheck","agentId":agent["id"],"enabled":True,"requestId":"spell-usage"})
+            ticket = tp("createTicket", {"projectId":project["id"],"title":"Fix teh issue","description":"Check teh text","agent":False,"kind":"task","requestId":"spell-ticket"})
             request = {"ticketId":ticket["id"],"expectedVersion":ticket["version"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":"spell-run"}
-            run = tk("startSpellcheck", request)
-            assert tk("startSpellcheck", request)["id"] == run["id"]
-            attribution = tk("getUsageAttribution", {"id":run["id"]})
+            run = tp("startSpellcheck", request)
+            assert tp("startSpellcheck", request)["id"] == run["id"]
+            attribution = tp("getUsageAttribution", {"id":run["id"]})
             assert attribution["callerKind"] == "human" and attribution["initiatorId"] and attribution["agentId"] == agent["id"]
             assert attribution["projectId"] == project["id"] and attribution["ticketId"] == ticket["id"] and attribution["epicId"] == ticket["parentId"] and attribution["goalId"] == project["unassignedGoal"] and attribution["hierarchyStatus"] == "complete"
-            done = wait_for(lambda: (value if (value:=tk("getSpellcheckRun", {"id":run["id"]}))["state"] != "running" else None))
+            done = wait_for(lambda: (value if (value:=tp("getSpellcheckRun", {"id":run["id"]}))["state"] != "running" else None))
             assert done["state"] == "completed", done
-            result = tk("getTicket", {"id":ticket["id"]})
+            result = tp("getTicket", {"id":ticket["id"]})
             assert result["title"] == "Fix the issue" and result["description"] == "Check the text"
-            assert tk("getTicketSpellchecks", {"id":ticket["id"]})["items"][0]["current"]
-            usage_summary = tk("getUsageSummary", {"projectId":project["id"]})
+            assert tp("getTicketSpellchecks", {"id":ticket["id"]})["items"][0]["current"]
+            usage_summary = tp("getUsageSummary", {"projectId":project["id"]})
             usage_hour = next(item for item in usage_summary["windows"] if item["name"] == "hour")
             assert usage_hour["invocations"] == 1 and usage_hour["succeeded"] == 1 and usage_hour["tokens"] == 150 and usage_hour["cached"] == 20
-            user_agent = tk("listUsageBreakdown", {"projectId":project["id"],"groupBy":"user_agent","window":"hour"})["items"]
+            user_agent = tp("listUsageBreakdown", {"projectId":project["id"],"groupBy":"user_agent","window":"hour"})["items"]
             assert len(user_agent)==1 and "Fixture spellchecker" in user_agent[0]["label"] and user_agent[0]["usage"]["tokens"]==150
-            epic_usage = tk("listUsageBreakdown", {"projectId":project["id"],"groupBy":"epic","window":"hour"})["items"]
+            epic_usage = tp("listUsageBreakdown", {"projectId":project["id"],"groupBy":"epic","window":"hour"})["items"]
             assert len(epic_usage)==1 and epic_usage[0]["label"].startswith("#"+str(ticket["parentId"])+" · ") and epic_usage[0]["usage"]["tokens"]==150
-            price = tk("publishUsagePrice", {"model":"fixture-model","expectedVersion":0,"requestId":"price-1","effective":"2099-01-01","source":"fixture rates","input":"1","cached":"0.5","output":"2"})
+            price = tp("publishUsagePrice", {"model":"fixture-model","expectedVersion":0,"requestId":"price-1","effective":"2099-01-01","source":"fixture rates","input":"1","cached":"0.5","output":"2"})
             assert price["version"] == 1
-            assert tk("publishUsagePrice", {"model":"fixture-model","expectedVersion":0,"requestId":"price-1","effective":"2099-01-01","source":"fixture rates","input":"1","cached":"0.5","output":"2"})["version"] == 1
+            assert tp("publishUsagePrice", {"model":"fixture-model","expectedVersion":0,"requestId":"price-1","effective":"2099-01-01","source":"fixture rates","input":"1","cached":"0.5","output":"2"})["version"] == 1
             def priced():
-                row = next(item for item in tk("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
+                row = next(item for item in tp("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
                 return row if row["estimatedUsdMicros"] == 170 and not row["pricePending"] else None
             assert wait_for(priced)["futureRates"]
-            price = tk("publishUsagePrice", {"model":"fixture-model","expectedVersion":1,"requestId":"price-2","effective":"2026-01-01","source":"fixture revised","input":"1","cached":"0.5","output":"4"})
+            price = tp("publishUsagePrice", {"model":"fixture-model","expectedVersion":1,"requestId":"price-2","effective":"2026-01-01","source":"fixture revised","input":"1","cached":"0.5","output":"4"})
             def repriced():
-                row = next(item for item in tk("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
+                row = next(item for item in tp("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
                 return row if row["estimatedUsdMicros"] == 230 and not row["pricePending"] else None
             assert wait_for(repriced)["revisedRates"]
-            price_history = tk("listUsagePriceHistory", {"model":"fixture-model"})["items"]
-            valuations = tk("listUsageValuations", {"id":run["id"]})["items"]
+            price_history = tp("listUsagePriceHistory", {"model":"fixture-model"})["items"]
+            valuations = tp("listUsageValuations", {"id":run["id"]})["items"]
             assert [item["version"] for item in price_history] == [1, 2]
             assert [item["estimateMicros"] for item in valuations] == [170, 230] and valuations[1]["previousMicros"] == 170
-            history = tk("listTicketHistory", {"id":ticket["id"]})["items"]
+            history = tp("listTicketHistory", {"id":ticket["id"]})["items"]
             assert history[-2]["snapshot"]["title"] == "Fix teh issue" and history[-1]["action"] == "spellcheck"
             if args.browser:
                 browser("open", endpoint); browser_open = True
@@ -356,92 +356,92 @@ def main(database_url=None):
                 browser("press", "Shift+F10");browser("wait", '[data-ticket-menu="agents"]');browser("click", '[data-ticket-menu="agents"]')
                 browser("wait", "--fn", "document.querySelector('[data-spellcheck-usage]')?.textContent.startsWith('✓ Spellcheck')")
                 browser("press", "Escape")
-            tk("updateTicket", {"id":ticket["id"],"expectedVersion":result["version"],"title":"Another edit"})
-            assert not tk("getTicketSpellchecks", {"id":ticket["id"]})["items"][0]["current"]
+            tp("updateTicket", {"id":ticket["id"],"expectedVersion":result["version"],"title":"Another edit"})
+            assert not tp("getTicketSpellchecks", {"id":ticket["id"]})["items"][0]["current"]
             if args.browser:
                 browser("wait", "--fn", "document.querySelector('[data-ticket=" + json.dumps(str(ticket["id"])) + "]')?.textContent.includes('Another edit')")
                 browser("eval", f'document.querySelector({json.dumps(card)}).focus()');browser("press", "Shift+F10");browser("wait", '[data-ticket-menu="agents"]');browser("click", '[data-ticket-menu="agents"]')
                 browser("wait", "--fn", "document.querySelector('[data-spellcheck-usage]')?.textContent.includes('checked before text changed')")
-            stale_ticket = tk("createTicket", {"projectId":project["id"],"title":"slow teh issue","agent":False,"kind":"task","requestId":"spell-stale-ticket"})
-            stale_run = tk("startSpellcheck", {"ticketId":stale_ticket["id"],"expectedVersion":stale_ticket["version"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":"spell-stale-run"})
-            tk("updateTicket", {"id":stale_ticket["id"],"expectedVersion":stale_ticket["version"],"title":"human edited"})
-            stale_result = wait_for(lambda: (value if (value:=tk("getSpellcheckRun", {"id":stale_run["id"]}))["state"] != "running" else None))
-            assert stale_result["state"] == "failed" and tk("getTicket", {"id":stale_ticket["id"]})["title"] == "human edited"
-            assert not tk("getTicketSpellchecks", {"id":stale_ticket["id"]})["items"]
-            invalid_ticket = tk("createTicket", {"projectId":project["id"],"title":"invalid teh issue","agent":False,"kind":"task","requestId":"spell-invalid-ticket"})
-            invalid_run = tk("startSpellcheck", {"ticketId":invalid_ticket["id"],"expectedVersion":invalid_ticket["version"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":"spell-invalid-run"})
-            invalid_result = wait_for(lambda: (value if (value:=tk("getSpellcheckRun", {"id":invalid_run["id"]}))["state"] != "running" else None))
-            assert invalid_result["state"] == "failed" and tk("getTicket", {"id":invalid_ticket["id"]})["title"] == "invalid teh issue"
-            assert not tk("getTicketSpellchecks", {"id":invalid_ticket["id"]})["items"]
-            failed_usage = next(item for item in tk("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
+            stale_ticket = tp("createTicket", {"projectId":project["id"],"title":"slow teh issue","agent":False,"kind":"task","requestId":"spell-stale-ticket"})
+            stale_run = tp("startSpellcheck", {"ticketId":stale_ticket["id"],"expectedVersion":stale_ticket["version"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":"spell-stale-run"})
+            tp("updateTicket", {"id":stale_ticket["id"],"expectedVersion":stale_ticket["version"],"title":"human edited"})
+            stale_result = wait_for(lambda: (value if (value:=tp("getSpellcheckRun", {"id":stale_run["id"]}))["state"] != "running" else None))
+            assert stale_result["state"] == "failed" and tp("getTicket", {"id":stale_ticket["id"]})["title"] == "human edited"
+            assert not tp("getTicketSpellchecks", {"id":stale_ticket["id"]})["items"]
+            invalid_ticket = tp("createTicket", {"projectId":project["id"],"title":"invalid teh issue","agent":False,"kind":"task","requestId":"spell-invalid-ticket"})
+            invalid_run = tp("startSpellcheck", {"ticketId":invalid_ticket["id"],"expectedVersion":invalid_ticket["version"],"usageId":usage["id"],"usageVersion":usage["version"],"requestId":"spell-invalid-run"})
+            invalid_result = wait_for(lambda: (value if (value:=tp("getSpellcheckRun", {"id":invalid_run["id"]}))["state"] != "running" else None))
+            assert invalid_result["state"] == "failed" and tp("getTicket", {"id":invalid_ticket["id"]})["title"] == "invalid teh issue"
+            assert not tp("getTicketSpellchecks", {"id":invalid_ticket["id"]})["items"]
+            failed_usage = next(item for item in tp("getUsageSummary", {"projectId":project["id"]})["windows"] if item["name"] == "hour")
             assert failed_usage["failed"] == 2 and failed_usage["tokens"] == 450
             if args.browser:
-                browser_ticket = tk("createTicket", {"projectId":project["id"],"title":"browser teh action","agent":False,"kind":"task","requestId":"spell-browser-ticket"})
+                browser_ticket = tp("createTicket", {"projectId":project["id"],"title":"browser teh action","agent":False,"kind":"task","requestId":"spell-browser-ticket"})
                 browser("press", "Escape")
                 browser_card = f'.ticket-open[data-ticket="{browser_ticket["id"]}"]'
                 browser("wait", browser_card); browser("eval", f'document.querySelector({json.dumps(browser_card)}).focus()')
                 browser("press", "Shift+F10");browser("wait", '[data-ticket-menu="agents"]');browser("click", '[data-ticket-menu="agents"]')
                 browser("click", "[data-spellcheck-usage]")
-                wait_for(lambda: tk("getTicket", {"id":browser_ticket["id"]})["title"] == "browser the action")
+                wait_for(lambda: tp("getTicket", {"id":browser_ticket["id"]})["title"] == "browser the action")
                 browser("wait", "--fn", "document.querySelector('[data-ticket=" + json.dumps(str(browser_ticket["id"])) + "]')?.textContent.includes('browser the action')")
                 browser("eval", f'document.querySelector({json.dumps(browser_card)}).focus()');browser("press", "Shift+F10");browser("wait", '[data-ticket-menu="agents"]');browser("click", '[data-ticket-menu="agents"]')
                 browser("wait", "--fn", "document.querySelector('[data-spellcheck-usage]')?.textContent.startsWith('✓ Spellcheck')")
-            destination = tk("createProject", {"name":"Attribution destination","requestId":"attribution-project"})
-            latest_ticket = tk("getTicket", {"id":ticket["id"]})
-            moved = tk("transferTicket", {"id":ticket["id"],"expectedVersion":latest_ticket["version"],"destinationProjectId":destination["id"]})
+            destination = tp("createProject", {"name":"Attribution destination","requestId":"attribution-project"})
+            latest_ticket = tp("getTicket", {"id":ticket["id"]})
+            moved = tp("transferTicket", {"id":ticket["id"],"expectedVersion":latest_ticket["version"],"destinationProjectId":destination["id"]})
             assert moved["projectId"] == destination["id"]
-            after_move = tk("getUsageAttribution", {"id":run["id"]})
+            after_move = tp("getUsageAttribution", {"id":run["id"]})
             assert after_move["projectId"] == project["id"] and after_move["epicId"] == ticket["parentId"] and after_move["ticketVersion"] == ticket["version"]
-            assert next(item for item in tk("getUsageSummary", {"projectId":destination["id"]})["windows"] if item["name"]=="hour")["invocations"] == 0
-            tk("shutdownLocalRuntime", {"confirm":True});clean=True
+            assert next(item for item in tp("getUsageSummary", {"projectId":destination["id"]})["windows"] if item["name"]=="hour")["invocations"] == 0
+            tp("shutdownLocalRuntime", {"confirm":True});clean=True
             print("PASS: spellcheck usage, price revisions, failure accounting, browser views and concurrent edits using zero-model fixture")
             return
         operation = "openShellSession" if args.shell_pty else "openCodexTerminal" if args.codex_pty else "open" + args.harness_pty.title() + "Terminal" if args.harness_pty else "openConsoleSession"
         start = {"projectId": project["id"], "requestId": "terminal-start"}
         if args.persona_pty:
-            definition = tk("saveAgentDefinition", {"name":"Fixture reviewer","goal":"review-role-marker","prompt":"Ask before changing anything","skills":["sample"],"harness":"codex","model":"fixture-model","thinking":"high","requestId":"persona-create"})
+            definition = tp("saveAgentDefinition", {"name":"Fixture reviewer","goal":"review-role-marker","prompt":"Ask before changing anything","skills":["sample"],"harness":"codex","model":"fixture-model","thinking":"high","requestId":"persona-create"})
             operation = "openAgentSession"
             start.update({"agentId":definition["id"],"expectedVersion":definition["version"]})
             if args.usage_pty:
-                ticket = tk("createTicket", {"projectId":project["id"],"title":"Configured agent task","agent":False,"requestId":"usage-ticket"})
-                usage = tk("saveAgentUsage", {"projectId":project["id"],"name":"Review","agentId":definition["id"],"kind":"todo-conversation","enabled":True,"requestId":"usage-create"})
+                ticket = tp("createTicket", {"projectId":project["id"],"title":"Configured agent task","agent":False,"requestId":"usage-ticket"})
+                usage = tp("saveAgentUsage", {"projectId":project["id"],"name":"Review","agentId":definition["id"],"kind":"todo-conversation","enabled":True,"requestId":"usage-create"})
                 start.update({"ticketId":ticket["id"],"usageId":usage["id"],"usageVersion":usage["version"]})
                 try:
-                    tk(operation, {**start,"usageVersion":usage["version"]+1,"requestId":"stale-usage-start"})
+                    tp(operation, {**start,"usageVersion":usage["version"]+1,"requestId":"stale-usage-start"})
                     raise AssertionError("stale action started a session")
                 except RuntimeError as error:
                     assert "action" in str(error).lower() or "usage" in str(error).lower()
         if not args.shell_pty and not args.codex_pty and not args.harness_pty:
             start["harness"] = harness
-        row = tk(operation, start)
+        row = tp(operation, start)
         session_id = row["id"]
         assert row["state"] == "running" and row["ticketId"] == 0
         if args.usage_pty:
-            attribution = tk("getUsageAttribution", {"id":session_id})
+            attribution = tp("getUsageAttribution", {"id":session_id})
             assert attribution["usageId"] == usage["id"] and attribution["usageVersion"] == usage["version"] and attribution["ticketId"] == ticket["id"]
-            tk("removeAgentUsage", {"id":usage["id"],"projectId":project["id"],"expectedVersion":usage["version"],"requestId":"usage-remove"})
-            assert not tk("listAgentUsages", {"projectId":project["id"]})["items"]
+            tp("removeAgentUsage", {"id":usage["id"],"projectId":project["id"],"expectedVersion":usage["version"],"requestId":"usage-remove"})
+            assert not tp("listAgentUsages", {"projectId":project["id"]})["items"]
             try:
-                tk(operation, {**start,"requestId":"removed-usage-start"})
+                tp(operation, {**start,"requestId":"removed-usage-start"})
                 raise AssertionError("removed action started a new session")
             except RuntimeError as error:
                 assert "action" in str(error).lower() or "usage" in str(error).lower()
         if args.persona_pty:
-            updated = tk("saveAgentDefinition", {"id":definition["id"],"expectedVersion":definition["version"],"name":"Fixture reviewer","goal":"review-role-marker","prompt":"Updated instructions","skills":["sample"],"harness":"codex","model":"fixture-model","thinking":"high","requestId":"persona-update"})
+            updated = tp("saveAgentDefinition", {"id":definition["id"],"expectedVersion":definition["version"],"name":"Fixture reviewer","goal":"review-role-marker","prompt":"Updated instructions","skills":["sample"],"harness":"codex","model":"fixture-model","thinking":"high","requestId":"persona-update"})
             assert updated["version"] == definition["version"] + 1
-        assert tk(operation, start)["id"] == session_id
+        assert tp(operation, start)["id"] == session_id
         import base64
         def read():
-            return base64.b64decode(tk("attachSession", {"id": session_id}).get("data", "")).decode(errors="replace")
+            return base64.b64decode(tp("attachSession", {"id": session_id}).get("data", "")).decode(errors="replace")
         if args.codex_pty or args.harness_pty:
             direct_name = args.harness_pty or "codex"
-            setup = tk("getSession")["welcomeSetup"]
+            setup = tp("getSession")["welcomeSetup"]
             if not args.browser:
-                tk("setDefaultHarness", {"expectedVersion": setup["version"], "harness": direct_name})
+                tp("setDefaultHarness", {"expectedVersion": setup["version"], "harness": direct_name})
             assert row["harness"] == direct_name + "-pty" and row["directory"] == str(repository.resolve())
             if args.codex_pty:
                 skill_path = isolated_home / ".agents/skills/teleport/SKILL.md"
-                assert skill_path.read_text() == subprocess.check_output([str(ROOT / "bin/tk"), "skill"], env=environment, text=True, timeout=10)
+                assert skill_path.read_text() == subprocess.check_output([str(ROOT / "bin/tp"), "skill"], env=environment, text=True, timeout=10)
             manifest = json.loads((folder / "runtime/sessions.json").read_text())[session_id]
             assert not manifest.get("native") and not (folder / "runtime" / (session_id + ".client.json")).exists()
             wait_for(lambda: "direct Codex fixture ready" in read())
@@ -449,9 +449,9 @@ def main(database_url=None):
                 assert row["personaId"] == definition["id"] and row["personaName"] == "Fixture reviewer"
                 assert "persona configuration verified" in read()
             data = base64.b64encode(b"hello\n").decode()
-            assert tk("sendSessionInput", {"id": session_id, "requestId": "direct-input", "data": data})["state"] == "delivered"
+            assert tp("sendSessionInput", {"id": session_id, "requestId": "direct-input", "data": data})["state"] == "delivered"
             wait_for(lambda: "direct fixture received: hello" in read())
-            tk("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
+            tp("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
             if args.persona_pty and args.browser:
                 browser("open", endpoint)
                 browser_open = True
@@ -468,16 +468,16 @@ def main(database_url=None):
                 browser("wait", "[data-agent-start]")
                 browser("click", "[data-agent-start]")
                 browser("wait", ".xterm-screen")
-                second = wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] != session_id and item.get("personaId") == definition["id"]), None))
-                wait_for(lambda: "persona configuration verified" in base64.b64decode(tk("attachSession", {"id": second["id"]}).get("data", "")).decode(errors="replace"))
+                second = wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] != session_id and item.get("personaId") == definition["id"]), None))
+                wait_for(lambda: "persona configuration verified" in base64.b64decode(tp("attachSession", {"id": second["id"]}).get("data", "")).decode(errors="replace"))
                 for key in "quit":
                     browser("press", key)
                 browser("press", "Enter")
                 browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == second["id"] and item["state"] == "exited"), None))
-                tk("stopSession", {"id": session_id, "confirm": True})
-                wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tk("listSessions")["items"]))
-                tk("shutdownLocalRuntime", {"confirm": True})
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == second["id"] and item["state"] == "exited"), None))
+                tp("stopSession", {"id": session_id, "confirm": True})
+                wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tp("listSessions")["items"]))
+                tp("shutdownLocalRuntime", {"confirm": True})
                 clean = True
                 print("PASS: agent factory launches a configured persona PTY, accepts input and closes on exit; no model calls")
                 return
@@ -486,7 +486,7 @@ def main(database_url=None):
                 fixture_dir.mkdir()
                 subprocess.run(["go", "build", "-o", str(fixture_dir / "codex"), "./tools/fixtures/native-codex"], cwd=ROOT, check=True, timeout=60)
                 host_fixture = subprocess.Popen([str(fixture_dir / "codex"), "app-server"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                wait_for(lambda: next((item for item in tk("listHostHarnesses")["items"] if item["pid"] == host_fixture.pid and not item["managed"]), None))
+                wait_for(lambda: next((item for item in tp("listHostHarnesses")["items"] if item["pid"] == host_fixture.pid and not item["managed"]), None))
                 browser("open", endpoint)
                 browser_open = True
                 browser("find", "label", "Username", "fill", "admin")
@@ -502,30 +502,30 @@ def main(database_url=None):
                 browser("press", "Escape")
                 browser("click", f"#{direct_name}-pty-console")
                 browser("wait", ".xterm-screen")
-                second = wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] != session_id and item["harness"] == direct_name + "-pty"), None))
-                wait_for(lambda: "direct Codex fixture ready" in base64.b64decode(tk("attachSession", {"id": second["id"]}).get("data", "")).decode(errors="replace"))
-                blocked = subprocess.run([str(ROOT / "bin/tk"), operation, "--data", json.dumps({"projectId": project["id"], "requestId": "over-limit"})], env=environment, text=True, capture_output=True, timeout=15)
+                second = wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] != session_id and item["harness"] == direct_name + "-pty"), None))
+                wait_for(lambda: "direct Codex fixture ready" in base64.b64decode(tp("attachSession", {"id": second["id"]}).get("data", "")).decode(errors="replace"))
+                blocked = subprocess.run([str(ROOT / "bin/tp"), operation, "--data", json.dumps({"projectId": project["id"], "requestId": "over-limit"})], env=environment, text=True, capture_output=True, timeout=15)
                 assert blocked.returncode != 0 and "limit" in blocked.stderr.lower(), blocked.stderr
                 for key in "quit":
                     browser("press", key)
                 browser("press", "Enter")
                 browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == second["id"] and item["state"] == "exited"), None))
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == second["id"] and item["state"] == "exited"), None))
                 browser("click", "#harness-console")
                 browser("wait", "--fn", f"terminalView?.id==={json.dumps(session_id)}")
                 browser("press", "Escape")
-                tk("stopSession", {"id": session_id, "confirm": True})
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == session_id and item["state"] == "exited"), None))
+                tp("stopSession", {"id": session_id, "confirm": True})
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == session_id and item["state"] == "exited"), None))
                 browser("click", "#harness-console")
                 browser("wait", ".xterm-screen")
-                third = wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] not in (session_id, second["id"]) and item["harness"] == direct_name + "-pty"), None))
-                wait_for(lambda: "direct Codex fixture ready" in base64.b64decode(tk("attachSession", {"id": third["id"]}).get("data", "")).decode(errors="replace"))
+                third = wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] not in (session_id, second["id"]) and item["harness"] == direct_name + "-pty"), None))
+                wait_for(lambda: "direct Codex fixture ready" in base64.b64decode(tp("attachSession", {"id": third["id"]}).get("data", "")).decode(errors="replace"))
                 for key in "quit":
                     browser("press", key)
                 browser("press", "Enter")
                 browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == third["id"] and item["state"] == "exited"), None))
-                fourth = tk(operation, {"projectId": project["id"], "requestId": "session-list-stop"})
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == third["id"] and item["state"] == "exited"), None))
+                fourth = tp(operation, {"projectId": project["id"], "requestId": "session-list-stop"})
                 browser("click", "#session-recovery")
                 browser("wait", f'[data-host-inspect="{host_fixture.pid}"]')
                 browser("click", f'[data-host-inspect="{host_fixture.pid}"]')
@@ -543,22 +543,22 @@ def main(database_url=None):
                 browser("wait", "--fn", "document.querySelector('tk-dialog[open] h2')?.textContent==='Harness sessions'")
                 browser("wait", "--fn", f"!document.querySelector('[data-stop-managed=\"{fourth['id']}\"]')")
                 browser("press", "Escape")
-            tk("stopSession", {"id": session_id, "confirm": True})
-            wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tk("listSessions")["items"]))
-            tk("shutdownLocalRuntime", {"confirm": True})
+            tp("stopSession", {"id": session_id, "confirm": True})
+            wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tp("listSessions")["items"]))
+            tp("shutdownLocalRuntime", {"confirm": True})
             clean = True
             print(f"PASS: direct {direct_name} fixture PTY, input/output, resize and owned exit; no model calls" + ("; browser start and quit close dialog" if args.browser else ""))
             return
         if args.shell_pty:
             assert row["harness"] == "shell" and row["directory"] == str(repository.resolve())
             command = b"printf 'TK_%s\\n' SHELL_READY\n"
-            receipt = tk("sendSessionInput", {"id": session_id, "requestId": "shell-command", "data": base64.b64encode(command).decode()})
+            receipt = tp("sendSessionInput", {"id": session_id, "requestId": "shell-command", "data": base64.b64encode(command).decode()})
             assert receipt["state"] == "delivered"
             wait_for(lambda: "TK_SHELL_READY" in read())
-            tk("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
-            second = tk("openShellSession", {"projectId": project["id"], "requestId": "second-shell"})
+            tp("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
+            second = tp("openShellSession", {"projectId": project["id"], "requestId": "second-shell"})
             assert second["id"] != session_id and second["state"] == "running"
-            assert next(item for item in tk("listProjectSummaries")["items"] if item["id"] == project["id"])["agents"] == 0
+            assert next(item for item in tp("listProjectSummaries")["items"] if item["id"] == project["id"])["agents"] == 0
             if args.browser:
                 browser("open", endpoint)
                 browser_open = True
@@ -569,22 +569,22 @@ def main(database_url=None):
                 browser("press", "Escape")
                 browser("click", "#shell-console")
                 browser("wait", ".xterm-screen")
-                third = wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] not in (session_id, second["id"]) and item["harness"] == "shell"), None))
+                third = wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] not in (session_id, second["id"]) and item["harness"] == "shell"), None))
                 browser("eval", "terminalView.terminal.paste(\"printf 'TK_%s\\\\n' BROWSER_READY\");true")
                 browser("press", "Enter")
                 def browser_output():
-                    output = tk("attachSession", {"id": third["id"]})["data"]
+                    output = tp("attachSession", {"id": third["id"]})["data"]
                     return "TK_BROWSER_READY" in base64.b64decode(output).decode(errors="replace")
                 wait_for(browser_output)
                 for key in "exit":
                     browser("press", key)
                 browser("press", "Enter")
                 browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
-                wait_for(lambda: next((item for item in tk("listSessions")["items"] if item["id"] == third["id"] and item["state"] == "exited"), None))
-            tk("stopSession", {"id": second["id"], "confirm": True})
-            tk("stopSession", {"id": session_id, "confirm": True})
-            wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tk("listSessions")["items"]))
-            tk("shutdownLocalRuntime", {"confirm": True})
+                wait_for(lambda: next((item for item in tp("listSessions")["items"] if item["id"] == third["id"] and item["state"] == "exited"), None))
+            tp("stopSession", {"id": second["id"], "confirm": True})
+            tp("stopSession", {"id": session_id, "confirm": True})
+            wait_for(lambda: all(item["state"] in ("exited", "failed") for item in tp("listSessions")["items"]))
+            tp("shutdownLocalRuntime", {"confirm": True})
             clean = True
             print("PASS: independent project-root zsh PTYs, input/output, resize and confirmed stop with zero agent capacity" + ("; browser shell control, input and dialog close after exit" if args.browser else ""))
             return
@@ -598,42 +598,42 @@ def main(database_url=None):
             for _ in range(5):
                 time.sleep(.2)
                 assert "remote project directory is inside an explicitly untrusted project" not in read()
-                assert tk("listSessions")["items"][0]["state"] == "running"
+                assert tp("listSessions")["items"][0]["state"] == "running"
             assert row["directory"] == str(repository.resolve())
             assert git_output(repository, "worktree", "list", "--porcelain").count("worktree ") == 1
-            tk("stopSession", {"id": session_id, "confirm": True})
-            wait_for(lambda: tk("listSessions")["items"][0]["state"] in ("exited", "failed"))
-            tk("shutdownLocalRuntime", {"confirm": True})
+            tp("stopSession", {"id": session_id, "confirm": True})
+            wait_for(lambda: tp("listSessions")["items"][0]["state"] in ("exited", "failed"))
+            tp("shutdownLocalRuntime", {"confirm": True})
             clean = True
             print("PASS: installed Codex starts in a trusted fixture project without a provider credential or model turn")
             return
         wait_for(lambda: ("native fixture connected" if args.native_fixture else "terminal fixture") in read())
         if args.native_large_frame:
             wait_for(lambda: "native fixture large frame received" in read())
-        summary = next(item for item in tk("listProjectSummaries")["items"] if item["id"] == project["id"])
+        summary = next(item for item in tp("listProjectSummaries")["items"] if item["id"] == project["id"])
         assert summary["agents"] == 1 and summary["agentsScope"] == "own-authorized" and summary["tokens"] is None
         if args.native_fixture:
-            wait_for(lambda: tk("getSessionRequests", {"id": session_id})["items"])
+            wait_for(lambda: tp("getSessionRequests", {"id": session_id})["items"])
             context_env = dict(environment, TELEPORT_CONFIG=str(folder / "runtime" / (session_id + ".client.json")))
             for operation, permitted in [("listProjects", True), ("getSession", False), ("listSessions", False), ("approveTicket", False)]:
-                result = subprocess.run([str(ROOT / "bin/tk"), operation, "--data", "{}"], env=context_env, text=True, capture_output=True, timeout=15)
+                result = subprocess.run([str(ROOT / "bin/tp"), operation, "--data", "{}"], env=context_env, text=True, capture_output=True, timeout=15)
                 assert (result.returncode == 0) == permitted, (operation, result.stdout, result.stderr)
         sent = {"id": session_id, "requestId": "terminal-input-1", "data": base64.b64encode(b"alpha\n").decode()}
-        receipt = tk("sendSessionInput", sent)
-        assert receipt["state"] == "delivered" and tk("sendSessionInput", sent) == receipt
+        receipt = tp("sendSessionInput", sent)
+        assert receipt["state"] == "delivered" and tp("sendSessionInput", sent) == receipt
         wait_for(lambda: ("native fixture answer resolved" if args.native_fixture else "received: alpha") in read())
         assert read().count("native fixture answer resolved" if args.native_fixture else "received: alpha") == 1
         if args.native_fixture:
-            native = wait_for(lambda: next((r for r in tk("getSessionRequests", {"id": session_id})["items"] if r["state"] == "resolved" and r.get("source")), None))
+            native = wait_for(lambda: next((r for r in tp("getSessionRequests", {"id": session_id})["items"] if r["state"] == "resolved" and r.get("source")), None))
             assert native["source"] == "native client" and native["answers"]["secret"]["answers"] == ["[redacted]"]
             assert "fixture-secret" not in (folder / "runtime/sessions.json").read_text()
             def completed_turn():
-                current = tk("getSessionTurn", {"id": session_id}).get("turn")
+                current = tp("getSessionTurn", {"id": session_id}).get("turn")
                 return current if current and current["state"] == "completed" else None
             turn = wait_for(completed_turn)
             assert turn["state"] == "completed" and turn["text"] == "Native fixture completed" and not turn["truncated"]
-            assert not tk("getSessionTurn", {"id": session_id}).get("failure")
-        tk("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
+            assert not tp("getSessionTurn", {"id": session_id}).get("failure")
+        tp("resizeSession", {"id": session_id, "cols": 120, "rows": 35})
         before = json.loads((folder / "runtime/sessions.json").read_text())[session_id]
         if args.browser:
             browser("open", endpoint)
@@ -652,71 +652,71 @@ def main(database_url=None):
             wait_for(lambda: read().count("Fixture direction?") >= 2 if args.native_fixture else "received: from browser" in read())
             browser("wait", "--fn", "terminalView&&!terminalView.sending&&terminalView.queue.length===0")
             browser("eval", "window.navigationTerminal=terminalView;true")
-            preferences = tk("getViewPreferences")
-            tk("saveViewPreferences", {"expectedVersion": preferences["version"], "defaultView": preferences["defaultView"], "defaultProject": preferences["defaultProject"], "recent": preferences["recent"], "navigationPosition": "left"})
+            preferences = tp("getViewPreferences")
+            tp("saveViewPreferences", {"expectedVersion": preferences["version"], "defaultView": preferences["defaultView"], "defaultProject": preferences["defaultProject"], "recent": preferences["recent"], "navigationPosition": "left"})
             browser("wait", "--fn", "preferences.navigationPosition==='left'")
             browser("eval", "if(terminalView!==window.navigationTerminal||document.documentElement.dataset.navigation!=='top')throw new Error('Remote navigation disturbed the attached terminal')")
-            interventions = len(tk("listSessionInterventions", {"id": session_id})["items"])
+            interventions = len(tp("listSessionInterventions", {"id": session_id})["items"])
             browser("press", "Escape")
             browser("wait", "--fn", "!document.querySelector('tk-dialog[open]')")
             browser("wait", "--fn", "document.documentElement.dataset.navigation==='left'")
-            assert len(tk("listSessionInterventions", {"id": session_id})["items"]) == interventions
+            assert len(tp("listSessionInterventions", {"id": session_id})["items"]) == interventions
             browser("wait", f'#session-icons [data-session="{session_id}"]')
             browser("click", f'#session-icons [data-session="{session_id}"]')
             browser("wait", ".xterm-screen")
             browser("screenshot", "/tmp/teleport-terminal.png")
-            before_interrupt = len(tk("listSessionInterventions", {"id": session_id})["items"])
+            before_interrupt = len(tp("listSessionInterventions", {"id": session_id})["items"])
             browser("press", "Control+c")
             browser("wait", "--fn", "document.querySelector('tk-dialog[open] h2')?.textContent==='Interrupt harness'")
             browser("press", "Escape")
-            assert len(tk("listSessionInterventions", {"id": session_id})["items"]) == before_interrupt
+            assert len(tp("listSessionInterventions", {"id": session_id})["items"]) == before_interrupt
         process.terminate()
         process.wait(timeout=10)
         process = serve()
-        assert tk("listSessions")["items"][0]["id"] == session_id
+        assert tp("listSessions")["items"][0]["id"] == session_id
         second = {"id": session_id, "requestId": "terminal-after-restart", "data": base64.b64encode(b"after restart\n").decode()}
-        assert tk("sendSessionInput", second)["state"] == "delivered"
+        assert tp("sendSessionInput", second)["state"] == "delivered"
         wait_for(lambda: ("native fixture answer resolved" if args.native_fixture else "received: after restart") in read())
         after = json.loads((folder / "runtime/sessions.json").read_text())[session_id]
         assert before["launchId"] == after["launchId"] and before["generation"] == after["generation"]
         assert row["directory"] == str(repository.resolve()), "Independent console did not use its project root"
         assert git_output(repository, "worktree", "list", "--porcelain").count("worktree ") == 1, "Independent console created a worktree"
-        tk("stopSession", {"id": session_id, "confirm": True})
-        wait_for(lambda: tk("listSessions")["items"][0]["state"] == "exited")
-        assert next(item for item in tk("listProjectSummaries")["items"] if item["id"] == project["id"])["agents"] == 0
+        tp("stopSession", {"id": session_id, "confirm": True})
+        wait_for(lambda: tp("listSessions")["items"][0]["state"] == "exited")
+        assert next(item for item in tp("listProjectSummaries")["items"] if item["id"] == project["id"])["agents"] == 0
         if args.native_fixture:
-            expired = subprocess.run([str(ROOT / "bin/tk"), "listProjects"], env=context_env, capture_output=True, timeout=15)
+            expired = subprocess.run([str(ROOT / "bin/tp"), "listProjects"], env=context_env, capture_output=True, timeout=15)
             assert expired.returncode != 0, "Exited native context credential remained usable"
         if args.console_only:
-            tk("shutdownLocalRuntime", {"confirm": True})
+            tp("shutdownLocalRuntime", {"confirm": True})
             clean = True
             print("PASS: project-root console, native directory argument, reconnect and observed stop; zero model calls")
             return
-        settings = tk("getSession")["settings"]
-        limited = tk("copyWorkflow", {"sourceKey": "agent@1", "projectId": project["id"], "title": "One implementation worker", "requestId": "native-quota"})
+        settings = tp("getSession")["settings"]
+        limited = tp("copyWorkflow", {"sourceKey": "agent@1", "projectId": project["id"], "title": "One implementation worker", "requestId": "native-quota"})
         for phase in limited["phases"]:
             if phase["role"] == "Doing":
                 phase["workers"] = 1
                 phase["description"] = "Keep native implementation inside the shared pool."
-        limited = tk("saveWorkflow", {"definition": limited, "expectedRevision": limited["draftRevision"]})
-        project = tk("activateWorkflowVersion", {"workflowKey": limited["id"] + "@draft", "expectedRevision": limited["draftRevision"], "projectId": project["id"], "expectedProjectVersion": project["version"]})
-        settings = tk("setExecutionMode", {"mode": "demo", "expectedVersion": settings["version"]})
-        ticket = tk("createTicket", {"projectId": project["id"], "title": "Prepared native task", "requestId": "native-task"})
-        tk("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
+        limited = tp("saveWorkflow", {"definition": limited, "expectedRevision": limited["draftRevision"]})
+        project = tp("activateWorkflowVersion", {"workflowKey": limited["id"] + "@draft", "expectedRevision": limited["draftRevision"], "projectId": project["id"], "expectedProjectVersion": project["version"]})
+        settings = tp("setExecutionMode", {"mode": "demo", "expectedVersion": settings["version"]})
+        ticket = tp("createTicket", {"projectId": project["id"], "title": "Prepared native task", "requestId": "native-task"})
+        tp("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
         def proposal():
-            current = tk("getTicket", {"id": ticket["id"]})
+            current = tp("getTicket", {"id": ticket["id"]})
             return current if current.get("refinement") else None
         ticket = wait_for(proposal)
-        tk("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
-        ticket = tk("acceptRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"], "proposalId": ticket["refinement"]["id"]})
-        ticket = tk("prepareTaskWorktree", {"id": ticket["id"], "expectedVersion": ticket["version"], "requestId": "prepare-native-task"})
-        attached = tk("startTicketSession", {"projectId": project["id"], "ticketId": ticket["id"], "expectedVersion": ticket["version"], "harness": harness, "requestId": "ticket-native-start"})
+        tp("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
+        ticket = tp("acceptRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"], "proposalId": ticket["refinement"]["id"]})
+        ticket = tp("prepareTaskWorktree", {"id": ticket["id"], "expectedVersion": ticket["version"], "requestId": "prepare-native-task"})
+        attached = tp("startTicketSession", {"projectId": project["id"], "ticketId": ticket["id"], "expectedVersion": ticket["version"], "harness": harness, "requestId": "ticket-native-start"})
         session_id = attached["id"]
-        ticket = tk("getTicket", {"id": ticket["id"]})
+        ticket = tp("getTicket", {"id": ticket["id"]})
         assert ticket["execution"] == "local:" + session_id and ticket["active"] and not ticket.get("attention")
         if not args.native_fixture:
             def board_active():
-                result = tk("getBoardExecution", {"projectId": project["id"], "workflowKey": ticket["workflow"]})
+                result = tp("getBoardExecution", {"projectId": project["id"], "workflowKey": ticket["workflow"]})
                 phase = next(row for row in result["phases"] if row["phaseId"] == ticket["phase"])
                 return phase if phase["active"] == 1 else None
             observed_phase = wait_for(board_active)
@@ -733,8 +733,8 @@ def main(database_url=None):
                 browser("press", "Escape")
             print("PASS: observed active/capacity, rounded perimeter trace and exact robot reconnect", flush=True)
         if args.native_fixture:
-            question = wait_for(lambda: next((r for r in tk("getSessionRequests", {"id": session_id})["items"] if r["state"] == "pending"), None))
-            wait_for(lambda: next((r for r in tk("listSessions")["items"] if r["id"] == session_id and r.get("attention")), None))
+            question = wait_for(lambda: next((r for r in tp("getSessionRequests", {"id": session_id})["items"] if r["state"] == "pending"), None))
+            wait_for(lambda: next((r for r in tp("listSessions")["items"] if r["id"] == session_id and r.get("attention")), None))
             if args.browser:
                 browser("open", endpoint)
                 browser("wait", "#welcome-status")
@@ -745,12 +745,12 @@ def main(database_url=None):
                 browser("eval", f'document.querySelector(\'[data-ticket-card="{ticket["id"]}"] .ticket-open\').focus()')
                 browser("press", "Shift+F10")
                 browser("wait", '[data-ticket-menu="teleport"]')
-                interventions = len(tk("listSessionInterventions", {"id": session_id})["items"])
+                interventions = len(tp("listSessionInterventions", {"id": session_id})["items"])
                 browser("click", '[data-ticket-menu="teleport"]')
                 browser("wait", ".xterm-screen")
                 browser("eval", f'if(terminalView?.id!=={json.dumps(session_id)})throw new Error("Menu reconnected the wrong instance")')
                 browser("press", "Escape")
-                assert len(tk("listSessionInterventions", {"id": session_id})["items"]) == interventions
+                assert len(tp("listSessionInterventions", {"id": session_id})["items"]) == interventions
                 browser("eval", f'document.querySelector(\'[data-ticket-card="{ticket["id"]}"] .ticket-open\').focus()')
                 browser("press", "Shift+F10")
                 browser("wait", '[data-ticket-menu="questions"]')
@@ -767,11 +767,11 @@ def main(database_url=None):
                 browser("press", "Escape")
             else:
                 answer = {"id": session_id, "requestId": question["id"], "operationId": "native-answer", "answers": {"direction": {"answers": ["Continue"]}, "secret": {"answers": ["fixture-secret"]}}}
-                response = tk("respondToAgent", answer)
-                assert response["state"] == "delivered" and tk("respondToAgent", answer) == response
-            resolved = wait_for(lambda: next((r for r in tk("getSessionRequests", {"id": session_id})["items"] if r["state"] == "resolved"), None))
+                response = tp("respondToAgent", answer)
+                assert response["state"] == "delivered" and tp("respondToAgent", answer) == response
+            resolved = wait_for(lambda: next((r for r in tp("getSessionRequests", {"id": session_id})["items"] if r["state"] == "resolved"), None))
             assert resolved["source"] == "ticket/teleport dialog" and resolved["answers"]["secret"]["answers"] == ["[redacted]"]
-        audit = tk("sendSessionInput", {"id": session_id, "requestId": "outside-ticket-input", "data": base64.b64encode(b"outside workflow\n").decode()})
+        audit = tp("sendSessionInput", {"id": session_id, "requestId": "outside-ticket-input", "data": base64.b64encode(b"outside workflow\n").decode()})
         assert audit["state"] == "delivered" and audit["actor"] == "admin" and "data" not in audit
         if args.browser:
             browser("open", endpoint)
@@ -783,11 +783,11 @@ def main(database_url=None):
             browser("click", selector)
             browser("wait", ".xterm-screen")
             browser("press", "Escape")
-        tk("stopSession", {"id": session_id, "confirm": True})
-        wait_for(lambda: all(r["state"] in ("exited", "failed") for r in tk("listSessions")["items"]))
-        ticket = tk("getTicket", {"id": ticket["id"]})
+        tp("stopSession", {"id": session_id, "confirm": True})
+        wait_for(lambda: all(r["state"] in ("exited", "failed") for r in tp("listSessions")["items"]))
+        ticket = tp("getTicket", {"id": ticket["id"]})
         assert not ticket["active"] and not ticket.get("execution") and ticket["status"] == "Doing"
-        tk("shutdownLocalRuntime", {"confirm": True})
+        tp("shutdownLocalRuntime", {"confirm": True})
         clean = True
         print("PASS: real owned daemon/PTY, duplicate fencing, resize, same-instance API restart, observed stop and zero model calls" + ("; native wire question/resolution, redaction and scoped context credentials" if args.native_fixture else "") + ("; browser stdin/output, Escape detach and robot reconnect" if args.browser else ""))
     except Exception:
@@ -806,11 +806,11 @@ def main(database_url=None):
         if not clean and process is not None and process.poll() is None:
             try:
                 if session_id:
-                    for item in tk("listSessions")["items"]:
+                    for item in tp("listSessions")["items"]:
                         if item["state"] not in ("exited", "failed"):
-                            tk("stopSession", {"id": item["id"], "confirm": True})
-                    wait_for(lambda: all(r["state"] in ("exited", "failed") for r in tk("listSessions")["items"]))
-                    tk("shutdownLocalRuntime", {"confirm": True})
+                            tp("stopSession", {"id": item["id"], "confirm": True})
+                    wait_for(lambda: all(r["state"] in ("exited", "failed") for r in tp("listSessions")["items"]))
+                    tp("shutdownLocalRuntime", {"confirm": True})
                 clean = True
             except (RuntimeError, AssertionError):
                 print(f"Retain unresolved owned runtime evidence: {folder}")

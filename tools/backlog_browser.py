@@ -2,9 +2,9 @@
 import json
 
 
-def verify_backlog(browser, tk, project, goal, epic, stories, stage=lambda name: None):
+def verify_backlog(browser, tp, project, goal, epic, stories, stage=lambda name: None):
     def call(operation, data):
-        return json.loads(tk(operation, "--data", json.dumps(data)))
+        return json.loads(tp(operation, "--data", json.dumps(data)))
 
     other = call("createTicket", {"projectId": project["id"], "parentId": goal["id"], "kind": "epic", "title": "The next delivery", "agent": False, "requestId": "backlog-epic"})
     idea = call("saveIdea", {"projectId": project["id"], "title": "A quieter backlog", "text": "Retain the original idea.", "requestId": "backlog-idea"})

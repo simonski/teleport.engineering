@@ -217,7 +217,7 @@ func ExpandOperation(command Command, arguments []string, out, diagnostics io.Wr
 	set.Usage = func() {
 		set.SetOutput(out)
 		defer set.SetOutput(io.Discard)
-		fmt.Fprintf(out, "Usage: tk %s [ID] [flags]\n%s\nAPI operation: %s\n", command.Command, command.Summary, command.Operation)
+		fmt.Fprintf(out, "Usage: tp %s [ID] [flags]\n%s\nAPI operation: %s\n", command.Command, command.Summary, command.Operation)
 		set.PrintDefaults()
 		fmt.Fprintln(out, "Object/array flags take JSON. Secret fields use -f - JSON stdin. Required request IDs are generated if omitted; pass -request-id to retry the same request.")
 	}
@@ -238,7 +238,7 @@ func ExpandOperation(command Command, arguments []string, out, diagnostics io.Wr
 	}
 	if hasFile {
 		if !allowFiles {
-			return nil, false, errors.New("-f is not available in the browser console; use the local tk CLI for file or stdin input")
+			return nil, false, errors.New("-f is not available in the browser console; use the local tp CLI for file or stdin input")
 		}
 		if *file == "" {
 			return nil, false, errors.New("-f requires a file path or - for stdin")
@@ -296,7 +296,7 @@ func ExpandOperation(command Command, arguments []string, out, diagnostics io.Wr
 			if key == "requestId" {
 				continue
 			}
-			return nil, false, fmt.Errorf("-%s is required; use tk %s -h", kebabField(key), command.Command)
+			return nil, false, fmt.Errorf("-%s is required; use tp %s -h", kebabField(key), command.Command)
 		}
 	}
 	wantsRequestID := false

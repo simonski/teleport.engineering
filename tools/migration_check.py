@@ -20,8 +20,8 @@ def main():
     parser.add_argument("--bridge",type=Path,required=True)
     args=parser.parse_args()
     bridge=args.bridge.resolve()
-    binary=ROOT/"bin/tk"
-    with tempfile.TemporaryDirectory(prefix="tk-migrate-",dir="/tmp") as temporary,cluster() as environment,database(environment=environment) as url:
+    binary=ROOT/"bin/tp"
+    with tempfile.TemporaryDirectory(prefix="tp-migrate-",dir="/tmp") as temporary,cluster() as environment,database(environment=environment) as url:
         folder=Path(temporary).resolve()
         source=folder/"installation.legacy"
         config=folder/"database.json"

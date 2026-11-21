@@ -1,4 +1,4 @@
-"""Capture a reviewed roadmap as inactive tickets through the authenticated tk API."""
+"""Capture a reviewed roadmap as inactive tickets through the authenticated tp API."""
 import argparse
 import json
 from pathlib import Path
@@ -8,17 +8,17 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def tk(operation, data=None):
-    command = [str(ROOT / "bin/tk"), operation]
+def tp(operation, data=None):
+    command = [str(ROOT / "bin/tp"), operation]
     if data is not None:
         command += ["-data", json.dumps(data)]
     command.append("-json")
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=15)
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"tk {operation} timed out; reconcile the result before retrying the same capture") from None
+        raise RuntimeError(f"tp {operation} timed out; reconcile the result before retrying the same capture") from None
     if result.returncode:
-        raise RuntimeError(f"tk {operation} failed with exit status {result.returncode}; inspect authentication or server diagnostics")
+        raise RuntimeError(f"tp {operation} failed with exit status {result.returncode}; inspect authentication or server diagnostics")
     return json.loads(result.stdout)
 
 
@@ -34,7 +34,7 @@ def validate(plan):
             raise ValueError("Every story requires a title, scope and acceptance criteria")
 
 
-def capture(plan, api=tk):
+def capture(plan, api=tp):
     validate(plan)
     session = api("getSession")
     def paused():

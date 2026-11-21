@@ -195,7 +195,7 @@ func List(ctx context.Context) ([]Process, error) {
 			if !ok || a.ppid == parent {
 				break
 			}
-			if a.executable == "tk" || a.executable == selfName {
+			if a.executable == "tp" || a.executable == "tk" || a.executable == selfName {
 				managed = true
 				break
 			}

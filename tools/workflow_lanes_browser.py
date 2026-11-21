@@ -2,14 +2,14 @@
 import json
 
 
-def verify_workflow_lanes(browser, tk, project):
-    draft = json.loads(tk("copyWorkflow", "--data", json.dumps({"sourceKey": "agent@1", "projectId": project["id"], "title": "Lane configuration", "requestId": "lane-configuration"})))
+def verify_workflow_lanes(browser, tp, project):
+    draft = json.loads(tp("copyWorkflow", "--data", json.dumps({"sourceKey": "agent@1", "projectId": project["id"], "title": "Lane configuration", "requestId": "lane-configuration"})))
     browser("click", '#nav-views [data-view="Home"]')
     browser("click", '#nav-views [data-view="Workflows"]')
     browser("wait", "--fn", "!workflowLoading&&!!document.querySelector('#flow-select')")
     browser("select", "#flow-select", draft["id"] + "@draft")
     browser("wait", "--fn", "!workflowMutation&&flow.family==='agent'")
-    verify_lane_order(browser, tk, draft)
+    verify_lane_order(browser, tp, draft)
     row = '[data-phase="1"]'
     browser("eval", "if(document.querySelector('[data-phase=\"0\"] [data-worker-field]').getBoundingClientRect().height)throw new Error('Manual lane exposes workers')")
     description = 'Clarify <scope> & preserve meaning.'
@@ -17,12 +17,12 @@ def verify_workflow_lanes(browser, tk, project):
     browser("fill", row + ' [data-field="workers"]', "1.5")
     browser("click", "#flow-save")
     browser("wait", "--fn", "document.querySelector('#flow-message').textContent.includes('whole number')")
-    unchanged = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
+    unchanged = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
     assert unchanged["draftRevision"] == draft["draftRevision"]
     browser("fill", row + ' [data-field="workers"]', "0")
     browser("click", "#flow-save")
     browser("wait", "--fn", "!workflowMutation&&document.querySelector('#flow-message').textContent.includes('Draft saved')")
-    saved = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
+    saved = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
     assert saved["phases"][1]["workers"] == 0 and saved["phases"][1]["description"] == description
     browser("click", "#flow-discard")
     browser("wait", "--fn", "!workflowLoading&&document.querySelector('[data-phase=\"1\"] [data-field=workers]').value==='0'")
@@ -33,14 +33,14 @@ def verify_workflow_lanes(browser, tk, project):
     browser("fill", row + ' [data-field="workers"]', "")
     browser("click", "#flow-save")
     browser("wait", "--fn", "!workflowMutation&&document.querySelector('#flow-message').textContent.includes('Draft saved')")
-    saved = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
+    saved = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
     assert "workers" not in saved["phases"][1]
     browser("fill", row + ' [data-field="workers"]', "2")
     browser("click", "#flow-save")
     browser("wait", "--fn", "!workflowMutation&&document.querySelector('#flow-message').textContent.includes('Draft saved')")
     browser("click", "#flow-publish")
     browser("wait", "--fn", "!workflowPublicationPending&&flow.published")
-    published = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@1"})))
+    published = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@1"})))
     assert published["phases"][1]["workers"] == 2 and published["phases"][1]["description"] == description
     browser("eval", "if(!document.querySelector('[data-phase=\"1\"]').disabled)throw new Error('Published fields are editable')")
     browser("eval", "document.querySelector('[data-phase=\"1\"]').scrollIntoView({block:'start'})")
@@ -51,7 +51,7 @@ def verify_workflow_lanes(browser, tk, project):
     browser("set", "viewport", "1280", "800")
 
 
-def verify_lane_order(browser, tk, draft):
+def verify_lane_order(browser, tp, draft):
     def order():
         return json.loads(browser("eval", "flow.phases.map(phase=>phase.id)"))
 
@@ -84,7 +84,7 @@ def verify_lane_order(browser, tk, draft):
     assert order()[:2] == initial[1::-1]
     browser("click", "#flow-save")
     browser("wait", "--fn", "!workflowMutation&&document.querySelector('#flow-message').textContent.includes('Draft saved')")
-    saved = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
+    saved = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))
     assert [phase["id"] for phase in saved["phases"]] == order()
     assert saved["rules"] == draft["rules"] and saved.get("layout") == draft.get("layout")
     browser("click", "#flow-discard")
@@ -93,5 +93,5 @@ def verify_lane_order(browser, tk, draft):
     browser("click", '[data-lane-up="1"]')
     browser("click", "#flow-save")
     browser("wait", "--fn", "!workflowMutation&&document.querySelector('#flow-message').textContent.includes('Draft saved')")
-    draft["draftRevision"] = json.loads(tk("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))["draftRevision"]
+    draft["draftRevision"] = json.loads(tp("getWorkflow", "--data", json.dumps({"workflowKey": draft["id"] + "@draft"})))["draftRevision"]
     assert order() == initial

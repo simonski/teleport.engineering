@@ -1,4 +1,4 @@
-"""Build a Linux tk, copy it under /home/exedev, and start the remote installation."""
+"""Build a Linux tp, copy it under /home/exedev, and start the remote installation."""
 import argparse
 import hashlib
 import json
@@ -31,7 +31,7 @@ def validate_target(host,directory):
 def linux_build(arch,builder="auto"):
     if arch not in ("amd64","arm64"):
         raise ValueError("Supported Linux architectures: amd64, arm64")
-    output=ROOT/"bin/deploy"/("linux-"+arch)/"tk"
+    output=ROOT/"bin/deploy"/("linux-"+arch)/"tp"
     output.parent.mkdir(parents=True,exist_ok=True)
     version=os.environ.get("TELEPORT_BUILD_VERSION") or local_version(ROOT,0).replace("dev.0","deploy")
     environment=dict(os.environ,GOOS="linux",GOARCH=arch,CGO_ENABLED="1")
@@ -46,9 +46,9 @@ def linux_build(arch,builder="auto"):
             raise RuntimeError("Install Zig or select --builder docker for Linux CGO cross-compilation")
         target=("x86_64" if arch=="amd64" else "aarch64")+"-linux-musl"
         environment.update(CC=shlex.quote(zig)+" cc -target "+target,CXX=shlex.quote(zig)+" c++ -target "+target)
-        command=["go","build",*flags,"-o",str(output),"./cmd/tk"]
+        command=["go","build",*flags,"-o",str(output),"./cmd/tp"]
     elif chosen=="native" and native:
-        command=["go","build",*flags,"-o",str(output),"./cmd/tk"]
+        command=["go","build",*flags,"-o",str(output),"./cmd/tp"]
     elif chosen=="docker":
         if not shutil.which("docker"):
             raise RuntimeError("Linux CGO build requires Zig, Docker, or a native Linux compiler")
@@ -56,7 +56,7 @@ def linux_build(arch,builder="auto"):
         command=["docker","run","--rm","--platform","linux/"+arch,"--user",f"{os.getuid()}:{os.getgid()}",
                  "-v",str(ROOT)+":/src:ro","-v",str(output.parent)+":/out","-v",str(cache)+":/cache","-w","/src",
                  "-e","CGO_ENABLED=1","-e","CGO_CFLAGS","-e","GOCACHE=/cache/build","-e","GOMODCACHE=/cache/mod","-e","GOPATH=/cache/gopath",
-                 "golang:1.27.3-bookworm","go","build",*flags,"-o","/out/tk","./cmd/tk"]
+                 "golang:1.27.3-bookworm","go","build",*flags,"-o","/out/tp","./cmd/tp"]
     else:
         raise RuntimeError("Native builds require Linux with the target architecture")
     subprocess.run(command,cwd=ROOT,env=environment,check=True,timeout=600)
@@ -116,8 +116,8 @@ def main():
     release=f"{int(time.time())}-{hashlib.sha256(binary.read_bytes()).hexdigest()[:12]}"
     remote=directory+"/releases/"+release
     subprocess.run([*ssh,shlex.join(["mkdir","-p","--",remote])],check=True,timeout=15)
-    uploads=[(binary,"tk"),(ROOT/"tools/deploy_remote.py","deploy_remote.py"),(ROOT/"tools/tool_history.py","tool_history.py"),(ROOT/"tools/postgres.py","postgres.py"),(ROOT/"tools/migrate_storage.py","migrate_storage.py")]
-    if args.migration_bridge:uploads.append((args.migration_bridge,"migration-tk"))
+    uploads=[(binary,"tp"),(ROOT/"tools/deploy_remote.py","deploy_remote.py"),(ROOT/"tools/tool_history.py","tool_history.py"),(ROOT/"tools/postgres.py","postgres.py"),(ROOT/"tools/migrate_storage.py","migrate_storage.py")]
+    if args.migration_bridge:uploads.append((args.migration_bridge,"migration-tp"))
     for source,destination in uploads:
         subprocess.run(["scp","-C","-q","-o","BatchMode=yes","-o","ConnectTimeout=10",str(source),args.host+":"+shlex.quote(remote+"/"+destination)],check=True,timeout=120)
     manifest={"root":directory,"release":release,"version":version,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"addr":args.addr,"publicHost":primary,"publicHosts":public_hosts}

@@ -36,7 +36,7 @@ func TestPersonaAlwaysReceivesTeleportSkillInstructions(t *testing.T) {
 	for _, harness := range []string{"codex", "claude"} {
 		body, _ := json.Marshal(personaLaunch{Agent: model.AgentDefinition{Name: "Example", Harness: harness}})
 		args, err := personaArguments(string(body))
-		if err != nil || !strings.Contains(strings.Join(args, " "), "tk skill") {
+		if err != nil || !strings.Contains(strings.Join(args, " "), "tp skill") {
 			t.Fatalf("%s: bundled Teleport skill not included: %v", harness, err)
 		}
 	}

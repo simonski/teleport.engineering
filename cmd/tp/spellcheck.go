@@ -69,7 +69,7 @@ func runSpellcheck(path, raw string, output io.Writer) error {
 	if json.Unmarshal([]byte(raw), &in) != nil || !strings.Contains(" codex claude ", " "+in.Agent.Harness+" ") {
 		return errors.New("invalid spellcheck configuration")
 	}
-	dir, err := os.MkdirTemp("", "tk-spellcheck-")
+	dir, err := os.MkdirTemp("", "tp-spellcheck-")
 	if err != nil {
 		return err
 	}

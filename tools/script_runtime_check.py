@@ -30,8 +30,8 @@ def main(database_url=None):
     browser_open = False
     browser_name = f"teleport-script-{port}"
 
-    def tk(operation, data=None, fail=False):
-        command = [str(ROOT / "bin/tk"), operation, "-json"]
+    def tp(operation, data=None, fail=False):
+        command = [str(ROOT / "bin/tp"), operation, "-json"]
         if data is not None:
             command += ["--data", json.dumps(data)]
         result = subprocess.run(command, env=environment, text=True, capture_output=True, timeout=20)
@@ -52,7 +52,7 @@ def main(database_url=None):
         raise AssertionError("Script runtime proof timed out")
 
     def serve():
-        server = subprocess.Popen([str(ROOT / "bin/tk"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        server = subprocess.Popen([str(ROOT / "bin/tp"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         def ready():
             try:
                 with urllib.request.urlopen(endpoint + "/healthz", timeout=1) as response:
@@ -63,7 +63,7 @@ def main(database_url=None):
         return server
 
     def login():
-        subprocess.run([str(ROOT / "bin/tk"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=20)
+        subprocess.run([str(ROOT / "bin/tp"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=20)
 
     def browser(*arguments):
         result = subprocess.run(["agent-browser", "--session", browser_name, *arguments], text=True, capture_output=True, timeout=40)
@@ -72,56 +72,56 @@ def main(database_url=None):
         return result.stdout
 
     def completed(identity):
-        view = tk("getScriptRun", {"id": identity})
+        view = tp("getScriptRun", {"id": identity})
         return view if view["run"]["state"] in ("completed", "failed", "interrupted", "unknown", "stopped") else None
 
     def start(source, request_id=None, mode="script"):
-        return tk("startScriptRun", {"source": source, "mode": mode, "requestId": request_id or uuid.uuid4().hex})
+        return tp("startScriptRun", {"source": source, "mode": mode, "requestId": request_id or uuid.uuid4().hex})
 
     try:
-        subprocess.run([str(ROOT / "bin/tk"), "init"], env=environment, check=True, capture_output=True, timeout=20)
+        subprocess.run([str(ROOT / "bin/tp"), "init"], env=environment, check=True, capture_output=True, timeout=20)
         process = serve()
         login()
-        project = tk("createProject", {"name": "Script proof", "key": "script-" + uuid.uuid4().hex[:12], "requestId": "script-project"})
+        project = tp("createProject", {"name": "Script proof", "key": "script-" + uuid.uuid4().hex[:12], "requestId": "script-project"})
         source = f'const ids=[];for(let i=0;i<3;i++){{const ticket=await tk("createTicket",{{projectId:{project["id"]},title:"Script ticket "+i,agent:false,requestId:"script-create-"+i}});ids.push(ticket.id)}}console.log("created",ids.length);return ids;'
         row = start(source, "first-script")
         assert start(source, "first-script")["id"] == row["id"]
         view = wait_for(lambda: completed(row["id"]))
         assert view["run"]["state"] == "completed", view
         assert len(view["calls"]) == 3 and view["output"]["logs"] == ["created 3"] and len(view["output"]["value"]) == 3
-        assert "different source" in tk("startScriptRun", {"source": "return 9;", "mode": "script", "requestId": "first-script"}, fail=True)
-        assert tk("listSessions")["items"] == [], "Script jobs fabricated coding-harness sessions"
+        assert "different source" in tp("startScriptRun", {"source": "return 9;", "mode": "script", "requestId": "first-script"}, fail=True)
+        assert tp("listSessions")["items"] == [], "Script jobs fabricated coding-harness sessions"
         ambient = start('[typeof process,typeof require,typeof fetch,typeof document,typeof std,typeof os]', mode="expression")
         ambient = wait_for(lambda: completed(ambient["id"]))
         assert ambient["output"]["value"] == ["undefined"] * 6
         long_run = start(f'await tk("createTicket",{{projectId:{project["id"]},title:"Before stop",agent:false,requestId:"before-stop"}});while(true){{}}')
-        wait_for(lambda: tk("getScriptRun", {"id": long_run["id"]})["calls"])
-        tk("stopScriptRun", {"id": long_run["id"], "confirm": True})
+        wait_for(lambda: tp("getScriptRun", {"id": long_run["id"]})["calls"])
+        tp("stopScriptRun", {"id": long_run["id"], "confirm": True})
         stopped = wait_for(lambda: completed(long_run["id"]))
         assert stopped["run"]["state"] == "stopped" and stopped["calls"][0]["state"] == "completed", stopped
-        settings = tk("getSession")["settings"]
-        settings = tk("setExecutionMode", {"mode": "demo", "expectedVersion": settings["version"]})
-        ticket = tk("createTicket", {"projectId": project["id"], "title": "Human-gated script scope", "requestId": "script-scope"})
-        tk("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
-        ticket = wait_for(lambda: (lambda t: t if t.get("refinement") else None)(tk("getTicket", {"id": ticket["id"]})))
-        other_ticket = tk("createTicket", {"projectId": project["id"], "title": "Other gated scope", "requestId": "other-script-scope"})
-        tk("requestRefinement", {"id": other_ticket["id"], "expectedVersion": other_ticket["version"]})
-        other_ticket = wait_for(lambda: (lambda t: t if t.get("refinement") else None)(tk("getTicket", {"id": other_ticket["id"]})))
-        tk("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
+        settings = tp("getSession")["settings"]
+        settings = tp("setExecutionMode", {"mode": "demo", "expectedVersion": settings["version"]})
+        ticket = tp("createTicket", {"projectId": project["id"], "title": "Human-gated script scope", "requestId": "script-scope"})
+        tp("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
+        ticket = wait_for(lambda: (lambda t: t if t.get("refinement") else None)(tp("getTicket", {"id": ticket["id"]})))
+        other_ticket = tp("createTicket", {"projectId": project["id"], "title": "Other gated scope", "requestId": "other-script-scope"})
+        tp("requestRefinement", {"id": other_ticket["id"], "expectedVersion": other_ticket["version"]})
+        other_ticket = wait_for(lambda: (lambda t: t if t.get("refinement") else None)(tp("getTicket", {"id": other_ticket["id"]})))
+        tp("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
         acceptance = {"id": ticket["id"], "expectedVersion": ticket["version"], "proposalId": ticket["refinement"]["id"]}
         row = start('return (await tk("acceptRefinement",' + json.dumps(acceptance) + ')).status;')
-        wait_for(lambda: tk("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting")
+        wait_for(lambda: tp("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting")
         other_acceptance = {"id": other_ticket["id"], "expectedVersion": other_ticket["version"], "proposalId": other_ticket["refinement"]["id"]}
         other_run = start('return (await tk("acceptRefinement",' + json.dumps(other_acceptance) + ')).status;')
-        wait_for(lambda: tk("getScriptRun", {"id": other_run["id"]})["run"]["state"] == "waiting")
+        wait_for(lambda: tp("getScriptRun", {"id": other_run["id"]})["run"]["state"] == "waiting")
         before = json.loads((folder / "runtime/sessions.json").read_text())[row["id"]]
-        tk("logout")
+        tp("logout")
         login()
-        assert tk("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting"
+        assert tp("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting"
         process.terminate()
         process.wait(timeout=10)
         process = serve()
-        assert tk("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting"
+        assert tp("getScriptRun", {"id": row["id"]})["run"]["state"] == "waiting"
         if args.browser:
             browser("open", endpoint)
             browser_open = True
@@ -132,34 +132,34 @@ def main(database_url=None):
             browser("press", "Escape")
             browser("press", "/")
             browser("wait", "#script-source")
-            browser("fill", "#script-source", "tk project ls -json")
+            browser("fill", "#script-source", "tp project ls -json")
             browser("press", "Enter")
             browser("wait", "--fn", "document.querySelector('#script-status')?.textContent === 'Ready'")
             browser("screenshot", "/tmp/teleport-script-console.png")
             browser("press", "Escape")
-        pending = tk("getScriptRun", {"id": row["id"]})["calls"][0]
-        tk("confirmScriptCall", {"id": row["id"], "callId": pending["id"], "fingerprint": pending["fingerprint"], "decision": "approve", "confirm": True})
+        pending = tp("getScriptRun", {"id": row["id"]})["calls"][0]
+        tp("confirmScriptCall", {"id": row["id"], "callId": pending["id"], "fingerprint": pending["fingerprint"], "decision": "approve", "confirm": True})
         finished = wait_for(lambda: completed(row["id"]))
         assert finished["run"]["state"] == "completed" and finished["output"]["value"] == "Ready", finished
         assert finished["calls"][0]["confirmationActor"] == "admin"
-        assert tk("getScriptRun", {"id": other_run["id"]})["run"]["state"] == "waiting", "Confirmation applied to the wrong run"
-        assert tk("getTicket", {"id": other_ticket["id"]})["status"] == "Refine"
-        tk("stopScriptRun", {"id": other_run["id"], "confirm": True})
+        assert tp("getScriptRun", {"id": other_run["id"]})["run"]["state"] == "waiting", "Confirmation applied to the wrong run"
+        assert tp("getTicket", {"id": other_ticket["id"]})["status"] == "Refine"
+        tp("stopScriptRun", {"id": other_run["id"], "confirm": True})
         wait_for(lambda: completed(other_run["id"]))
-        manual = tk("createTicket", {"projectId": project["id"], "title": "Manual completion gate", "criteria": "Fixture completion criteria", "agent": False, "requestId": "script-human-done"})
-        manual = tk("transitionTicket", {"id": manual["id"], "expectedVersion": manual["version"], "target": "Doing"})
+        manual = tp("createTicket", {"projectId": project["id"], "title": "Manual completion gate", "criteria": "Fixture completion criteria", "agent": False, "requestId": "script-human-done"})
+        manual = tp("transitionTicket", {"id": manual["id"], "expectedVersion": manual["version"], "target": "Doing"})
         done_input = {"id": manual["id"], "expectedVersion": manual["version"], "target": "Done", "confirm": True}
         done_run = start('return (await tk("transitionTicket",' + json.dumps(done_input) + ')).status;')
-        wait_for(lambda: tk("getScriptRun", {"id": done_run["id"]})["run"]["state"] == "waiting")
-        pending = tk("getScriptRun", {"id": done_run["id"]})["calls"][0]
-        tk("confirmScriptCall", {"id": done_run["id"], "callId": pending["id"], "fingerprint": pending["fingerprint"], "decision": "approve", "confirm": True})
+        wait_for(lambda: tp("getScriptRun", {"id": done_run["id"]})["run"]["state"] == "waiting")
+        pending = tp("getScriptRun", {"id": done_run["id"]})["calls"][0]
+        tp("confirmScriptCall", {"id": done_run["id"], "callId": pending["id"], "fingerprint": pending["fingerprint"], "decision": "approve", "confirm": True})
         done = wait_for(lambda: completed(done_run["id"]))
         assert done["run"]["state"] == "completed" and done["output"]["value"] == "Done", done
         after = json.loads((folder / "runtime/sessions.json").read_text())[row["id"]]
         assert before["generation"] == after["generation"] and before["launchId"] == after["launchId"]
-        tk("shutdownLocalRuntime", {"confirm": True})
+        tp("shutdownLocalRuntime", {"confirm": True})
         clean = True
-        print("PASS: owned isolated JavaScript, language/async API calls, duplicate receipts, private run credentials, bounded stop, logout/API restart and exact human confirmation; zero model calls" + ("; slash tk console browser path" if args.browser else ""))
+        print("PASS: owned isolated JavaScript, language/async API calls, duplicate receipts, private run credentials, bounded stop, logout/API restart and exact human confirmation; zero model calls" + ("; slash tp console browser path" if args.browser else ""))
     except Exception:
         if browser_open:
             print(browser("snapshot", "-i"))
@@ -170,11 +170,11 @@ def main(database_url=None):
             subprocess.run(["agent-browser", "--session", browser_name, "close"], capture_output=True, timeout=20)
         if not clean and process is not None and process.poll() is None:
             try:
-                for run in tk("listScriptRuns")["items"]:
+                for run in tp("listScriptRuns")["items"]:
                     if run["state"] in ("starting", "running", "waiting", "stopping", "unknown"):
-                        tk("stopScriptRun", {"id": run["id"], "confirm": True})
-                wait_for(lambda: all(run["state"] not in ("starting", "running", "waiting", "stopping", "unknown") for run in tk("listScriptRuns")["items"]))
-                tk("shutdownLocalRuntime", {"confirm": True})
+                        tp("stopScriptRun", {"id": run["id"], "confirm": True})
+                wait_for(lambda: all(run["state"] not in ("starting", "running", "waiting", "stopping", "unknown") for run in tp("listScriptRuns")["items"]))
+                tp("shutdownLocalRuntime", {"confirm": True})
                 clean = True
             except (RuntimeError, AssertionError):
                 print(f"Retain unresolved owned script evidence: {folder}")

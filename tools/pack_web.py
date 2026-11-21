@@ -1,4 +1,4 @@
-"""Create or verify the reproducible compressed web assets embedded in tk."""
+"""Create or verify the reproducible compressed web assets embedded in tp."""
 import argparse
 import io
 import os

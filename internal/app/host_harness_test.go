@@ -33,7 +33,7 @@ func TestHostHarnessDiscoveryRequiresHumanAdministratorAndStopConfirmation(t *te
 }
 func TestUnknownSessionStopDoesNotClaimSignalOrChangeOwnership(t *testing.T) {
 	svc, token, db := fixtureWithStore(t)
-	svc.ConfigureLocalRuntime(t.TempDir(), "/missing/tk", true)
+	svc.ConfigureLocalRuntime(t.TempDir(), "/missing/tp", true)
 	project := call(t, svc, token, "createProject", app.CreateProjectInput{Name: "Unknown console", RequestID: "unknown-console"}).(model.Project)
 	if err := db.Update(context.Background(), func(st *model.State) (bool, error) {
 		st.LocalSessions = map[string]model.LocalSession{"H1": {ID: "H1", Creator: "admin", ProjectID: project.ID, State: "unknown"}}

@@ -22,22 +22,22 @@ MARKER = "TK_NATIVE_ACCEPTANCE_OK"
 WORKFLOW_MARKER = "TELEPORT_WORKFLOW_ACCEPTED\n"
 
 
-def workflow_acceptance(tk, wait_for, folder, project):
+def workflow_acceptance(tp, wait_for, folder, project):
     """Exercise fixture-only human gates after checking the exact expected artifact."""
-    ticket = tk("createTicket", {"projectId": project["id"], "title": "Replace fixture.txt with the acceptance marker", "description": "Change only fixture.txt to exactly TELEPORT_WORKFLOW_ACCEPTED followed by one newline. Keep all other files and native configuration unchanged. No dependencies, installs, network access or application deployment. Use the owned branch, run a content check and git diff --check, then commit with linear history. Refine this exact bounded request without decomposition.", "criteria": "Only fixture.txt changes; exact UTF-8 content is TELEPORT_WORKFLOW_ACCEPTED followed by one newline. Main remains unchanged until the isolated test driver explicitly approves the verified exact candidate.", "requestId": "native-workflow-ticket"})
-    ticket = tk("setExecutionBudget", {"id": ticket["id"], "expectedVersion": ticket["version"], "limit": 3})
-    tk("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
-    settings = tk("getSession")["settings"]
-    tk("setExecutionMode", {"mode": "local", "expectedVersion": settings["version"]})
+    ticket = tp("createTicket", {"projectId": project["id"], "title": "Replace fixture.txt with the acceptance marker", "description": "Change only fixture.txt to exactly TELEPORT_WORKFLOW_ACCEPTED followed by one newline. Keep all other files and native configuration unchanged. No dependencies, installs, network access or application deployment. Use the owned branch, run a content check and git diff --check, then commit with linear history. Refine this exact bounded request without decomposition.", "criteria": "Only fixture.txt changes; exact UTF-8 content is TELEPORT_WORKFLOW_ACCEPTED followed by one newline. Main remains unchanged until the isolated test driver explicitly approves the verified exact candidate.", "requestId": "native-workflow-ticket"})
+    ticket = tp("setExecutionBudget", {"id": ticket["id"], "expectedVersion": ticket["version"], "limit": 3})
+    tp("requestRefinement", {"id": ticket["id"], "expectedVersion": ticket["version"]})
+    settings = tp("getSession")["settings"]
+    tp("setExecutionMode", {"mode": "local", "expectedVersion": settings["version"]})
 
     def observed(target):
-        current = tk("getTicket", {"id": ticket["id"]})
+        current = tp("getTicket", {"id": ticket["id"]})
         (folder / "workflow-ticket.json").write_text(json.dumps(current, indent=2))
-        for row in tk("listSessions")["items"]:
+        for row in tp("listSessions")["items"]:
             if row["state"] == "running":
-                evidence = tk("getSessionTurn", {"id": row["id"]})
+                evidence = tp("getSessionTurn", {"id": row["id"]})
                 (folder / (row["id"] + "-turn.json")).write_text(json.dumps(evidence, indent=2))
-                pending = tk("getSessionRequests", {"id": row["id"]})
+                pending = tp("getSessionRequests", {"id": row["id"]})
                 if any(item["state"] == "pending" for item in pending["items"]):
                     raise RuntimeError("Live fixture requires a native human answer; no answer or permission was invented")
         if current.get("resumeHold") or current.get("question") and not current["question"]["resolved"]:
@@ -49,7 +49,7 @@ def workflow_acceptance(tk, wait_for, folder, project):
     proposal = wait_for(lambda: observed("proposal"), timeout=180)
     assert not proposal["refinement"]["simulated"]
     (folder / "accepted-scope.json").write_text(json.dumps(proposal["refinement"], indent=2))
-    tk("acceptRefinement", {"id": ticket["id"], "expectedVersion": proposal["version"], "proposalId": proposal["refinement"]["id"]})
+    tp("acceptRefinement", {"id": ticket["id"], "expectedVersion": proposal["version"], "proposalId": proposal["refinement"]["id"]})
     approval = wait_for(lambda: observed("Approval"), timeout=300)
     candidate = approval["delivery"]["candidate"]
     work = approval["delivery"]["worktree"]["path"]
@@ -60,12 +60,12 @@ def workflow_acceptance(tk, wait_for, folder, project):
     assert (folder / "repository/fixture.txt").read_text() == "Owned native acceptance fixture.\n", "Main changed before human fixture approval"
     assert approval["agentReview"]["outcome"] == "success" and not approval["agentReview"]["simulated"]
     assert approval["agentReview"]["candidate"] == candidate["commit"]
-    rows = tk("listSessions")["items"]
+    rows = tp("listSessions")["items"]
     assert len(rows) == 3 and all(row["state"] == "exited" for row in rows)
     for row in rows:
-        snapshot = tk("getPrompt", {"id": ticket["id"], "sessionId": row["id"]})
+        snapshot = tp("getPrompt", {"id": ticket["id"], "sessionId": row["id"]})
         (folder / (row["id"] + "-prompt.json")).write_text(json.dumps(snapshot, indent=2))
-    done = tk("approveTicket", {"id": ticket["id"], "expectedVersion": approval["version"], "confirm": True})
+    done = tp("approveTicket", {"id": ticket["id"], "expectedVersion": approval["version"], "confirm": True})
     assert done["status"] == "Done" and (folder / "repository/fixture.txt").read_text() == WORKFLOW_MARKER
     assert done["attempts"] == 3
     return rows[-1]["id"]
@@ -105,8 +105,8 @@ def main(database_url=None):
     succeeded = False
     log = (folder / "server.log").open("w")
 
-    def tk(operation, data=None):
-        command = [str(ROOT / "bin/tk"), operation, "-json"]
+    def tp(operation, data=None):
+        command = [str(ROOT / "bin/tp"), operation, "-json"]
         if data is not None:
             command += ["--data", json.dumps(data)]
         result = subprocess.run(command, env=environment, text=True, capture_output=True, timeout=20)
@@ -131,10 +131,10 @@ def main(database_url=None):
             return False
 
     try:
-        subprocess.run([str(ROOT / "bin/tk"), "init"], env=environment, check=True, capture_output=True, timeout=20)
-        process = subprocess.Popen([str(ROOT / "bin/tk"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=log, stderr=log)
+        subprocess.run([str(ROOT / "bin/tp"), "init"], env=environment, check=True, capture_output=True, timeout=20)
+        process = subprocess.Popen([str(ROOT / "bin/tp"), "serve", "--addr", f"127.0.0.1:{port}", "--runtime-dir", str(folder / "runtime")], env=environment, stdout=log, stderr=log)
         wait_for(ready)
-        subprocess.run([str(ROOT / "bin/tk"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=20)
+        subprocess.run([str(ROOT / "bin/tp"), "login", "--password-stdin"], env=environment, input="password\n", text=True, check=True, capture_output=True, timeout=20)
         repository = folder / "repository"
         repository.mkdir()
         for command in (["init", "-b", "main"],):
@@ -142,25 +142,25 @@ def main(database_url=None):
         (repository / "fixture.txt").write_text("Owned native acceptance fixture.\n")
         for command in (["add", "fixture.txt"], ["commit", "-m", "Seed isolated native fixture"]):
             subprocess.run(["git", "-c", f"core.hooksPath={os.devnull}", "-c", "commit.gpgsign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@localhost", "-C", str(repository), *command], check=True, capture_output=True, timeout=20)
-        project = tk("createProject", {"name": "Native acceptance", "key": "native-acceptance", "requestId": "native-project"})
-        project = tk("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repository), "storageRoot": str(folder / "worktrees")})
+        project = tp("createProject", {"name": "Native acceptance", "key": "native-acceptance", "requestId": "native-project"})
+        project = tp("configureLocalRepository", {"projectId": project["id"], "expectedVersion": project["version"], "repository": str(repository), "storageRoot": str(folder / "worktrees")})
         if args.workflow:
             identity = "workflow"
-            identity = workflow_acceptance(tk, wait_for, folder, project)
+            identity = workflow_acceptance(tp, wait_for, folder, project)
             for path, before in hashes.items():
                 after = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
                 assert before == after, "Native configuration/rules changed"
-            tk("shutdownLocalRuntime", {"confirm": True})
+            tp("shutdownLocalRuntime", {"confirm": True})
             clean = succeeded = True
             print("PASS: authorized real Codex Refine → fixture scope acceptance → Implementation → separate read-only Review → exact artifact-checked fixture Approval; three attempts, unchanged native configuration and confirmed owned exits")
             return
-        row = tk("openConsoleSession", {"projectId": project["id"], "harness": "codex", "requestId": "native-session"})
+        row = tp("openConsoleSession", {"projectId": project["id"], "harness": "codex", "requestId": "native-session"})
         identity = row["id"]
 
         def connected():
             manifest = json.loads((folder / "runtime/sessions.json").read_text())
             current = manifest[identity]
-            output = tk("attachSession", {"id": identity})
+            output = tp("attachSession", {"id": identity})
             (folder / "terminal.txt").write_bytes(base64.b64decode(output.get("data", "")))
             if current["state"] in ("failed", "exited", "unknown"):
                 raise RuntimeError("Native startup did not retain a verified live process; private terminal evidence retained")
@@ -168,13 +168,13 @@ def main(database_url=None):
 
         wait_for(connected)
         prompt = "Reply exactly " + MARKER + ". Do not modify files or native configuration."
-        receipt = tk("sendSessionInput", {"id": identity, "requestId": "authorized-native-turn", "data": base64.b64encode((prompt + "\r").encode()).decode()})
+        receipt = tp("sendSessionInput", {"id": identity, "requestId": "authorized-native-turn", "data": base64.b64encode((prompt + "\r").encode()).decode()})
         assert receipt["state"] == "delivered", receipt
 
         def finished():
-            evidence = tk("getSessionTurn", {"id": identity})
+            evidence = tp("getSessionTurn", {"id": identity})
             turn = evidence.get("turn")
-            output = tk("attachSession", {"id": identity})
+            output = tp("attachSession", {"id": identity})
             (folder / "terminal.txt").write_bytes(base64.b64decode(output.get("data", "")))
             if evidence.get("failure"):
                 raise RuntimeError("Native acceptance failed with " + evidence["failure"]["code"] + "; no replay was started")
@@ -187,9 +187,9 @@ def main(database_url=None):
         for path, before in hashes.items():
             after = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
             assert before == after, "Native configuration/rules changed; no automatic rollback was attempted"
-        tk("stopSession", {"id": identity, "confirm": True})
-        wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tk("listSessions")["items"]))
-        tk("shutdownLocalRuntime", {"confirm": True})
+        tp("stopSession", {"id": identity, "confirm": True})
+        wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tp("listSessions")["items"]))
+        tp("shutdownLocalRuntime", {"confirm": True})
         clean = True
         succeeded = True
         print("PASS: authorized real Codex native PTY/thread, one completed provider turn, exact final result, unchanged native configuration/rules and observed owned exit")
@@ -197,16 +197,16 @@ def main(database_url=None):
         if not clean and process is not None and process.poll() is None:
             try:
                 if args.workflow:
-                    settings = tk("getSession")["settings"]
-                    tk("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
-                    for row in tk("listSessions")["items"]:
+                    settings = tp("getSession")["settings"]
+                    tp("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
+                    for row in tp("listSessions")["items"]:
                         if row["state"] not in ("exited", "failed"):
-                            tk("stopSession", {"id": row["id"], "confirm": True})
-                    wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tk("listSessions")["items"]))
+                            tp("stopSession", {"id": row["id"], "confirm": True})
+                    wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tp("listSessions")["items"]))
                 elif identity:
-                    tk("stopSession", {"id": identity, "confirm": True})
-                    wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tk("listSessions")["items"]))
-                tk("shutdownLocalRuntime", {"confirm": True})
+                    tp("stopSession", {"id": identity, "confirm": True})
+                    wait_for(lambda: all(row["state"] in ("exited", "failed") for row in tp("listSessions")["items"]))
+                tp("shutdownLocalRuntime", {"confirm": True})
                 clean = True
             except (RuntimeError, AssertionError):
                 pass

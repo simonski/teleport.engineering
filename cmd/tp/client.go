@@ -49,7 +49,7 @@ func requestOperation(endpoint string, creds credentials, operation string, data
 	client := http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("server unavailable; run tk serve (no database fallback): %w", err)
+		return nil, fmt.Errorf("server unavailable; run tp serve (no database fallback): %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, (4<<20)+1))

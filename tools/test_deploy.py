@@ -7,15 +7,22 @@ import unittest
 from unittest.mock import patch,MagicMock
 
 from deploy import validate_target
-from deploy_remote import deploy,read_credentials,reset_installation,secure_json,validate_manifest
+from deploy_remote import deploy,owned_process,read_credentials,reset_installation,secure_json,validate_manifest
 
 
 class DeployTest(unittest.TestCase):
+    def test_ownership_recognizes_current_and_previous_release_executables(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary).resolve()
+            for name,owned in (("tp",True),("tk",True),("other",False)):
+                with self.subTest(name=name),patch("deploy_remote.os.readlink",return_value=str(root/"releases"/"fixture"/name)),patch.object(Path,"read_bytes",return_value=b"binary\x00serve\x00"):
+                    self.assertEqual(owned_process(12345,root),owned)
+
     def test_upload_compresses_transport_and_hashes_original_binary(self):
         import contextlib, io, sys
         import deploy as deploy_tool
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);binary=root/"tk";binary.write_bytes(b"fixture binary")
+            root=Path(temporary);binary=root/"tp";binary.write_bytes(b"fixture binary")
             with patch.object(deploy_tool,"ROOT",root),patch.object(deploy_tool,"linux_build",return_value=(binary,"fixture")),patch.object(sys,"argv",["deploy.py"]),patch("deploy.subprocess.check_output",return_value="Linux x86_64"),patch("deploy.subprocess.run") as run,contextlib.redirect_stdout(io.StringIO()):
                 deploy_tool.main()
             uploads=[call.args[0] for call in run.call_args_list if call.args[0][0]=="scp" and str(binary) in call.args[0]]
@@ -34,18 +41,18 @@ class DeployTest(unittest.TestCase):
     def test_reset_archives_old_data_and_keeps_uploaded_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture");(root/"database.db").write_bytes(b"old data")
+            binary=release/"tp";binary.write_bytes(b"fixture");(root/"database.db").write_bytes(b"old data")
             manifest={"root":str(root),"release":release.name,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"version":"fixture","addr":"127.0.0.1:8000","publicHost":"teleport.engineering","reset":"reset"}
             with patch("deploy_remote.HOME_BASE",base),patch("deploy_remote.subprocess.check_output",return_value="fixture"):
                 backup=reset_installation(manifest)
             self.assertEqual((backup/"database.db").read_bytes(),b"old data")
-            self.assertEqual((root/"releases"/release.name/"tk").read_bytes(),b"fixture")
+            self.assertEqual((root/"releases"/release.name/"tp").read_bytes(),b"fixture")
             self.assertFalse((root/"database.db").exists())
 
     def test_reset_rejects_external_database_and_unreconciled_runtime_before_stopping(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture")
+            binary=release/"tp";binary.write_bytes(b"fixture")
             manifest={"root":str(root),"release":release.name,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"version":"fixture","addr":"127.0.0.1:8000","publicHost":"teleport.engineering","reset":"reset"}
             config=root/"database.json";secure_json(config,{"url":"postgresql://example.test/production"})
             with patch("deploy_remote.HOME_BASE",base),patch("deploy_remote.subprocess.check_output",return_value="fixture"),patch("deploy_remote.stop_owned") as stop:
@@ -73,7 +80,7 @@ class DeployTest(unittest.TestCase):
     def test_first_bootstrap_uses_stdin_and_redeploy_preserves_credentials_and_database(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture binary")
+            binary=release/"tp";binary.write_bytes(b"fixture binary")
             manifest={"root":str(root),"release":release.name,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"version":"fixture","addr":"127.0.0.1:9999","publicHost":"teleport.engineering","publicHosts":["teleport.engineering","teleport.exe.xyz"]}
             process=MagicMock(pid=12345);process.poll.return_value=None
             class Response:
@@ -116,7 +123,7 @@ class DeployTest(unittest.TestCase):
     def test_unsafe_log_cannot_stop_an_existing_server(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture")
+            binary=release/"tp";binary.write_bytes(b"fixture")
             (root/"server.log").symlink_to(base/"unrelated")
             secure_json(root/"server.json",{"pid":12345})
             manifest={"root":str(root),"release":release.name,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"version":"fixture","addr":"127.0.0.1:9999","publicHost":"teleport.engineering"}
@@ -127,7 +134,7 @@ class DeployTest(unittest.TestCase):
     def test_existing_file_database_requires_verified_migration_before_stop(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture")
+            binary=release/"tp";binary.write_bytes(b"fixture")
             (root/"database.db").write_bytes(b"retained installation")
             manifest={"root":str(root),"release":release.name,"sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),"version":"fixture","addr":"127.0.0.1:8000","publicHost":"teleport.engineering"}
             with patch("deploy_remote.HOME_BASE",base),patch("deploy_remote.subprocess.check_output",return_value="fixture"),patch("deploy_remote.stop_owned") as stop:
@@ -138,7 +145,7 @@ class DeployTest(unittest.TestCase):
     def test_failed_release_restores_previous_process_and_configuration(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture")
+            binary=release/"tp";binary.write_bytes(b"fixture")
             old=root/"releases/100-abcdef123456";old.mkdir();(root/"current").symlink_to(old)
             secure_json(root/"server.json",{"pid":100,"version":"old","release":str(old)})
             secure_json(root/"admin.json",{"username":"admin","password":"x"*43,"bootstrapComplete":True})
@@ -157,7 +164,7 @@ class DeployTest(unittest.TestCase):
     def test_first_run_failure_retains_initialized_target_for_retry(self):
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary).resolve();root=base/"teleport";release=root/"releases/123-abcdef123456";release.mkdir(parents=True)
-            binary=release/"tk";binary.write_bytes(b"fixture")
+            binary=release/"tp";binary.write_bytes(b"fixture")
             config=root/"database.json"
             def prepare(root):
                 existed=config.exists()

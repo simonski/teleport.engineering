@@ -60,7 +60,8 @@ def owned_process(pid,root):
     try:
         executable=Path(os.readlink(f"/proc/{pid}/exe")).resolve()
         command=Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\x00")
-        return executable.is_relative_to(root/"releases") and executable.name=="tk" and b"serve" in command
+        # Existing releases used tk and must still be recognized during upgrades.
+        return executable.is_relative_to(root/"releases") and executable.name in {"tp","tk"} and b"serve" in command
     except (OSError,ValueError):
         return False
 
@@ -115,7 +116,7 @@ def reset_installation(manifest):
     if root.stat().st_uid!=os.getuid():
         raise RuntimeError("Reset root must be owned by the deployment account")
     release=root/"releases"/manifest["release"]
-    binary=release/"tk"
+    binary=release/"tp"
     if release.is_symlink() or binary.is_symlink() or not binary.is_file() or hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest["sha256"]:
         raise RuntimeError("Uploaded reset binary is invalid")
     if subprocess.check_output([str(binary),"version"],text=True,timeout=5).strip()!=manifest["version"]:
@@ -204,7 +205,7 @@ def deploy(manifest):
     release=root/"releases"/manifest["release"]
     if release.parent!=root/"releases" or release.resolve()!=release:
         raise ValueError("Invalid release directory")
-    binary=release/"tk"
+    binary=release/"tp"
     if not binary.is_file() or binary.is_symlink() or hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest["sha256"]:
         raise RuntimeError("Uploaded binary hash does not match the build")
     binary.chmod(0o700)
@@ -225,7 +226,7 @@ def deploy(manifest):
     legacy=root/"database.db"
     if legacy.is_symlink():
         raise RuntimeError("Refusing a symlinked deployment database")
-    bridge=release/"migration-tk"
+    bridge=release/"migration-tp"
     had_legacy=legacy.exists()
     if legacy.exists():
         digest=manifest.get("migrationBridgeSHA256","")

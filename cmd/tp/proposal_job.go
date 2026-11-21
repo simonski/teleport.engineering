@@ -279,7 +279,7 @@ func runPersonaProposal(harness string, args []string, persona personaLaunch) er
 		return errors.New("invalid proposal launch")
 	}
 	fmt.Fprintf(os.Stdout, "[Preparing %s planning session]\n", persona.Agent.Harness)
-	dir, err := os.MkdirTemp("", "tk-proposal-")
+	dir, err := os.MkdirTemp("", "tp-proposal-")
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func runPersonaProposal(harness string, args []string, persona personaLaunch) er
 		}
 	}
 	cmd.Env = append(cmd.Env, "TERM=xterm-256color", "TELEPORT_CONFIG="+readConfig)
-	if executable, e := os.Executable(); e == nil && filepath.Base(executable) == "tk" {
+	if executable, e := os.Executable(); e == nil && filepath.Base(executable) == "tp" {
 		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(executable)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
 	runErr := cmd.Run()

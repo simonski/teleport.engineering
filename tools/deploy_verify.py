@@ -49,13 +49,13 @@ def main():
             if credentials:
                 config=str(Path(temporary)/(str(index)+".json"))
                 common=["--server",base,"--config",config]
-                result=subprocess.run([str(ROOT/"bin/tk"),"login",*common,"--username",credentials["username"],"--password-stdin"],input=credentials["password"]+"\n",capture_output=True,text=True,timeout=10)
+                result=subprocess.run([str(ROOT/"bin/tp"),"login",*common,"--username",credentials["username"],"--password-stdin"],input=credentials["password"]+"\n",capture_output=True,text=True,timeout=10)
                 if result.returncode:raise RuntimeError("Protected credential sign-in could not be verified on "+host)
                 try:
-                    result=subprocess.run([str(ROOT/"bin/tk"),"getSession",*common,"-json"],capture_output=True,text=True,timeout=10,check=True)
+                    result=subprocess.run([str(ROOT/"bin/tp"),"getSession",*common,"-json"],capture_output=True,text=True,timeout=10,check=True)
                     installations.add(json.loads(result.stdout)["installationId"])
                 finally:
-                    subprocess.run([str(ROOT/"bin/tk"),"logout",*common],capture_output=True,text=True,timeout=10,check=True)
+                    subprocess.run([str(ROOT/"bin/tp"),"logout",*common],capture_output=True,text=True,timeout=10,check=True)
             print(f"PASS: {host} HTTPS health {version}, current web assets and browser origin checks",flush=True)
     if len(versions)!=1 or credentials and len(installations)!=1:raise RuntimeError("Aliases did not identify the same deployment")
     if credentials:print("PASS: both aliases sign in to the same installation; verification sessions signed out",flush=True)

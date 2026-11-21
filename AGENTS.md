@@ -6,7 +6,7 @@ This checkout contains a Go application and its product contract:
 
 - `SPECIFICATION.md`: product requirements, action contracts, acceptance scenarios, and unresolved decisions.
 - `SDLC.md`: contributor communication and tooling rules.
-- `cmd/tk/`: executable entry point; `internal/app/`: domain services; `internal/model/`: persisted types; `internal/store/`: SQL ownership and transactions.
+- `cmd/tp/`: executable entry point; `internal/app/`: domain services; `internal/model/`: persisted types; `internal/store/`: SQL ownership and transactions.
 - `internal/server/`: HTTP contracts and embedded `web/` assets. Go tests sit beside their packages.
 
 Place reusable development tools under `tools/`. Keep generated binaries and local credentials out of Git.
@@ -21,14 +21,14 @@ Smoke stage and action-category timings append to ignored `tool_calls_stages.csv
 
 Read the authority and change-control rules in `SPECIFICATION.md` before proposing changes. Distinguish requirements, engineering-owned contracts, and open choices. Workflows are directed graphs with configurable outcome rules and backward routes; preserve finite attempts and human approval gates. Seed manual and agentic defaults. The specification alone does not authorize implementation, deployment, or destructive resets.
 
-Preserve the Goal → Epic → Task hierarchy. PostgreSQL is the only application database. Only `tk init` may access the database directly as a client; other application operations use the server API. The ignored `.respec/` directory is an explicitly retained external-tool exception, not application storage.
+Preserve the Goal → Epic → Task hierarchy. PostgreSQL is the only application database. Only `tp init` may access the database directly as a client; other application operations use the server API. The ignored `.respec/` directory is an explicitly retained external-tool exception, not application storage.
 
 ## Build, Test, and Development Commands
 
 Go 1.27.3+, Python 3 and Make are required to build; Node.js is also required for browser-source development checks. Supported commands:
 
-- `make build`: produce `bin/tk` with build version metadata.
-- `make build-debug`: retain native debug information in `bin/tk`.
+- `make build`: produce `bin/tp` with build version metadata.
+- `make build-debug`: retain native debug information in `bin/tp`.
 - `make install`: install the executable.
 - `make sbom`: generate `sbom.cdx.json` with Go and bundled browser dependencies, licenses and hashes.
 - `make browser-tools`: prepare a cached, pinned Python Playwright client and its matching headless Chromium for browser acceptance checks.
@@ -46,9 +46,9 @@ Go 1.27.3+, Python 3 and Make are required to build; Node.js is also required fo
 - `python3 -B tools/smoke.py --browser --studio-only`: check the Three.js 2D graph, hover/flow, independent layout persistence, Studio menus/tables and workflow Map.
 - `python3 -B tools/postgres_check.py --browser`: run the same suite and real browser path against a disposable PostgreSQL cluster; requires local server binaries. Add `--race` to opt into the low-priority race runner.
 
-Run `bin/tk init`, then `bin/tk serve`; neither build nor init starts services. Use the `tk` binary for server operations.
+Run `bin/tp init`, then `bin/tp serve`; neither build nor init starts services. Use the `tp` binary for server operations.
 
-Bare `tk` and `tk help` list top-level commands offline; `tk NOUN` lists its actions, and `tk commands [-json]` provides the complete catalogue. Prefer noun/action forms (`tk agent ls`, `tk project ls`, `tk ticket show ID`); `tk NOUN ACTION -h` describes generated typed flags. Raw operation spellings remain compatible. `tk import -project NAME FILE` or `tk import -project NAME` captures one bounded multiline UTF-8 Idea through `saveIdea`; the named project must be accessible. Capture is not classification, goal creation or agent execution. `python3 -B tools/cli_check.py` exercises a built binary against an owned HTTP/PTY fixture without database, real harness, browser or model calls.
+Bare `tp` and `tp help` list top-level commands offline; `tp NOUN` lists its actions, and `tp commands [-json]` provides the complete catalogue. Prefer noun/action forms (`tp agent ls`, `tp project ls`, `tp ticket show ID`); `tp NOUN ACTION -h` describes generated typed flags. Raw operation spellings remain compatible. `tp import -project NAME FILE` or `tp import -project NAME` captures one bounded multiline UTF-8 Idea through `saveIdea`; the named project must be accessible. Capture is not classification, goal creation or agent execution. `python3 -B tools/cli_check.py` exercises a built binary against an owned HTTP/PTY fixture without database, real harness, browser or model calls.
 
 Every `tools/smoke.py` invocation has a 30-second wall-clock budget, including those launched by the PostgreSQL runner. Six seconds are reserved for owned-process/browser cleanup. Expiry exits with status 124 and records outcome `timeout` in the history CSV.
 
@@ -70,7 +70,7 @@ Cover agreed acceptance scenarios with fresh evidence. No numeric coverage thres
 
 Broad checks remain paused until the user requests them again; validate current changes with narrowly scoped tests and `--plan`/Make dry runs. When resumed, `make check` is the lightweight everyday gate; use `make check-go`, `make check-integration` or an explicit package/test selector for Go and process integration evidence. Deprioritize full local race runs: use the explicit race target for concurrency/shared-state changes or release validation, and do not repeat it after unrelated documentation or browser-only edits. Normal and race Go checks both use low priority and bounded package/CPU parallelism; Node test files run serially. Preserve explicit `GOMAXPROCS` overrides. Ordinary domain fixtures reuse serialized bootstrap data while retaining independent databases, mutable state, installation identities and authenticated sessions. Initialization/authentication tests still exercise real production password hashing; never reduce production hashing cost for test speed. `tools/go_check.py` records invocation timings/outcomes and accepts `--run`, `--count` and a single-package `--profile PATH` for focused diagnosis. Keep profiles/test binaries in ignored `.cache/` or temporary storage.
 
-`planning/roadmap.json` captures the reviewed product areas, MVP boundaries and unresolved questions. `python3 -B tools/capture_backlog.py planning/roadmap.json --plan` previews the story list; omit `--plan` only for explicitly authorized capture through the signed-in `tk` API. Capture requires agent execution to be off, uses stable per-installation request IDs, preserves existing edits and stores an ignored receipt under `.cache/roadmap/`. It does not start agents or alter execution settings.
+`planning/roadmap.json` captures the reviewed product areas, MVP boundaries and unresolved questions. `python3 -B tools/capture_backlog.py planning/roadmap.json --plan` previews the story list; omit `--plan` only for explicitly authorized capture through the signed-in `tp` API. Capture requires agent execution to be off, uses stable per-installation request IDs, preserves existing edits and stores an ignored receipt under `.cache/roadmap/`. It does not start agents or alter execution settings.
 
 ## Commit & Pull Request Guidelines
 

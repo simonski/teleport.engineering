@@ -8,7 +8,7 @@ the looping graph; the DAG
         each state in it is an explanation of what'shappening
 
 
-using the tk skill, create a story per area
+using the tp skill, create a story per area
 
 -------------------
 MVP
@@ -21,8 +21,8 @@ Phases
         REQUIRES
             workflow
             pty
-            tk serve
-                tk agent
+            tp serve
+                tp agent
 
 
         OUT OF SCOPE
@@ -139,7 +139,7 @@ ideas for example are generally sorted in most recent first
 in an idea it should be possible to be presented multiple ideas that feel similar (classified same) which should then allow them to be merged.
 
 -------------------
-tk headless
+tp headless
 -------------------
     ability to dry-run a workflow via the API
 
@@ -157,25 +157,25 @@ dedicated agent session
 - the session should
     - have a drop down to select harness, model, thinking
     should preload any allow/deny rules
-    preload skills for tk
+    preload skills for tp
     should be 'stoppable'
 
 
 
 -------------------
-tk agent
+tp agent
 -------------------
 
-Run a binary pointing to the tk server api
+Run a binary pointing to the tp server api
     binary is a wrapper around a harness (depending on what is availble on the computer)
     agent wraps an invoked codex/claude etc. session and so will be iterating a lot based on the PTY from the harness provider
     initially the binary itself will be spawned and running on same computer as all the other processes
     eventually it will be a remote process (on a different computer)
     an agent has a id/password and an owner - the project it is attached to
-    agent uses the same tk api spec as a human -it communicates using the same primitive
-    agent uses a tk skill to know how to interact with tk, or just calls `tk help`
+    agent uses the same tp api spec as a human -it communicates using the same primitive
+    agent uses a tp skill to know how to interact with tp, or just calls `tp help`
     agent has a protocol to talk back to the api - this does not change often
-    agent has a provider-specific interface to a PTY for the provider harness codex, claude etc. - this will need to change as often as a new harness version comes out.  this means building tk agent will be something that needs to be
+    agent has a provider-specific interface to a PTY for the provider harness codex, claude etc. - this will need to change as often as a new harness version comes out.  this means building tp agent will be something that needs to be
         - fast
         - reliable
         - cater to multiple harnesses
@@ -186,7 +186,7 @@ Run a binary pointing to the tk server api
         - credentials/specific harness setup - the process can be started on the same computer as the server so -I will preauthenticate teh harnesses for now
         - provider api calls - we use the harnesses like a normal human uses them wiht all the features - but mostly via prompting directly in the stdin prompting loop
 
-    tk agentd
+    tp agentd
         TELEPORT_USENAMNE
         TELEPORT_PASSWORD
         TELEPORT_URL
@@ -194,7 +194,7 @@ Run a binary pointing to the tk server api
 
 
 -------------------
-tk agent manegment
+tp agent manegment
 -------------------
 A project will have N agents allocated.  The workflow pemits a maximum of M agents per agentic swimlane.   The workflow may allow more agents thatn the project has, in which case there would be a warning that the project is not allocated sufficientlt - but this is a WIP and we will iterate.
 
@@ -223,22 +223,22 @@ email process
     CLI to contain new command email usable users with role email
 
     # send an invite email
-    tk email invite          -email first.last@domain.com
+    tp email invite          -email first.last@domain.com
 
     # send a forgot password link invokes the backend process and puts email onto queue
-    tk email forgot-password -email first.last@domain.com
+    tp email forgot-password -email first.last@domain.com
 
     # send a forgot password link invokes the forgot password process and puts email onto queue
-    tk email forgot-password -email first.last@domain.com
+    tp email forgot-password -email first.last@domain.com
 
     # send a change password link invokes the change password process and puts email onto queue
-    tk email change-password -email first.last@domain.com
+    tp email change-password -email first.last@domain.com
 
     # send top N emails now
-    tk send -size N
+    tp send -size N
 
     # send default top N emails now
-    tk send
+    tp send
 
 email gui
     create an email tab visible to the admin
@@ -254,24 +254,24 @@ user inspection
 email queue
 -------------------
 
-implement an email function in the binary e.g. tk emaild which would be hte email deamon.  this can run indepdendently using SMTP or STDOUT and talks 'back' to the api deaemon/server which gives it its configuration
+implement an email function in the binary e.g. tp emaild which would be hte email deamon.  this can run indepdendently using SMTP or STDOUT and talks 'back' to the api deaemon/server which gives it its configuration
 
 the admin can set via config on www or cli to STDOUT or SMTP and supply encrypted credentials
 
 serve: www, api, email, scheduler commands
 
-    the server side components bundled in a single binary `tk`:
+    the server side components bundled in a single binary `tp`:
     split the proceses so that they can be run toger or separaterly, e.g.
-        tk serve.       - everything
+        tp serve.       - everything
             this is hte siplest way of just runing everything
             it is assumed that via config (www or cli) the processes below can be controlled
-        tk www          - only the www
-        tk api          - only the api
-        tk email        - only the www
-        tk scheduler    - only the scheduler
+        tp www          - only the www
+        tp api          - only the api
+        tp email        - only the www
+        tp scheduler    - only the scheduler
 
 
-    tk agent        - runs a named agent which is the wrpper around a harness
+    tp agent        - runs a named agent which is the wrpper around a harness
         there will be multiple agents
         they are
             - wrappers around a harness on the computer running
@@ -337,7 +337,7 @@ the header of all the views shoudl eb configurable to appear on the left, right 
 
 ----
 
-a tk import <file> command to take an entire text piece and attemtp to classify into goals
+a tp import <file> command to take an entire text piece and attemtp to classify into goals
 a web capability
     <available ont he backlog via an "import/upload" which either selects a file or accepts a long-form text input">
     same for the web where it would then be proposed back to the user the arrangement of goals being proposed, at which point
@@ -364,7 +364,7 @@ goal lifecycle
     whereas a task can be done - so a task is discrete, bounded, constrained.   A goal is possibly. amuch longer-form thing.
 
 
-tk <usage>
+tp <usage>
     ticket
     workflow
     goal

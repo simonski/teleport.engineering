@@ -2,10 +2,10 @@
 import json
 
 
-def verify_studio(browser,tk,project,ticket,stage=lambda name:None):
+def verify_studio(browser,tp,project,ticket,stage=lambda name:None):
     stage("studio-appearance")
     def call(operation,data):
-        return json.loads(tk(operation,"--data",json.dumps(data)))
+        return json.loads(tp(operation,"--data",json.dumps(data)))
     browser("set","viewport","1600","1000")
     goal=call("createTicket",{"projectId":project["id"],"kind":"goal","title":"A calmer boarding experience","agent":False,"requestId":"studio-goal"})
     epic=call("createTicket",{"projectId":project["id"],"kind":"epic","parentId":goal["id"],"title":"Build the boarding workflow","agent":False,"requestId":"studio-epic"})

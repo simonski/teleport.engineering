@@ -189,12 +189,12 @@ func printCommandOverview(out io.Writer, catalogue []Command) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	fmt.Fprintln(out, "teleport (tk) — commands")
+	fmt.Fprintln(out, "teleport (tp) — commands")
 	for _, name := range names {
 		fmt.Fprintf(out, "  %-18s %s\n", name, groups[name])
 	}
-	fmt.Fprintln(out, "\nUse tk COMMAND to list its actions and tk COMMAND ACTION -h for action flags.")
-	fmt.Fprintln(out, "Use tk commands for the full catalogue, or tk commands -json for machine-readable discovery.")
+	fmt.Fprintln(out, "\nUse tp COMMAND to list its actions and tp COMMAND ACTION -h for action flags.")
+	fmt.Fprintln(out, "Use tp commands for the full catalogue, or tp commands -json for machine-readable discovery.")
 }
 
 func printCatalogue(out io.Writer, topic string, machine bool, catalogue []Command) error {
@@ -205,7 +205,7 @@ func printCatalogue(out io.Writer, topic string, machine bool, catalogue []Comma
 		}
 	}
 	if len(items) == 0 {
-		return fmt.Errorf("unknown command %q; run tk help", topic)
+		return fmt.Errorf("unknown command %q; run tp help", topic)
 	}
 	if machine {
 		encoder := json.NewEncoder(out)
@@ -214,13 +214,13 @@ func printCatalogue(out io.Writer, topic string, machine bool, catalogue []Comma
 			Commands []Command `json:"commands"`
 		}{items})
 	}
-	fmt.Fprintln(out, "teleport (tk) — shipped public commands")
+	fmt.Fprintln(out, "teleport (tp) — shipped public commands")
 	for _, command := range items {
-		fmt.Fprintf(out, "  tk %-30s %s\n", command.Command, command.Summary)
+		fmt.Fprintf(out, "  tp %-30s %s\n", command.Command, command.Summary)
 	}
-	fmt.Fprintln(out, "\nUse tk NOUN ACTION -h for typed flags. list/create/get/update/grep also work as ls/new/show/edit/search aliases where available.")
-	fmt.Fprintln(out, "API-style names remain supported: tk OPERATION -data JSON, or tk api OPERATION -data JSON.")
-	fmt.Fprintln(out, "Use -server URL and -config PATH for API calls. tk tools/spec describe the running server, which may differ from this build.")
+	fmt.Fprintln(out, "\nUse tp NOUN ACTION -h for typed flags. list/create/get/update/grep also work as ls/new/show/edit/search aliases where available.")
+	fmt.Fprintln(out, "API-style names remain supported: tp OPERATION -data JSON, or tp api OPERATION -data JSON.")
+	fmt.Fprintln(out, "Use -server URL and -config PATH for API calls. tp tools/spec describe the running server, which may differ from this build.")
 	fmt.Fprintln(out, "Init starts no services or agents. Only init accesses storage as a client. Environment: TELEPORT_SERVER, TELEPORT_CONFIG, TELEPORT_DB, TELEPORT_DB_CONFIG.")
 	return nil
 }
@@ -269,7 +269,7 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 		}
 		for _, reserved := range []string{"init", "setup", "serve", "skill", "version", "tools", "spec", "import", "help", "commands", "api"} {
 			if args[1] == reserved {
-				return nil, false, errors.New("tk api accepts API operation names, not native commands")
+				return nil, false, errors.New("tp api accepts API operation names, not native commands")
 			}
 		}
 		for index, char := range args[1] {
@@ -302,5 +302,5 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 			return ExpandOperation(command, args[2:], out, diagnostics, allowFiles)
 		}
 	}
-	return nil, false, errors.New("unknown command; run tk help to list available nouns and actions")
+	return nil, false, errors.New("unknown command; run tp help to list available nouns and actions")
 }

@@ -1,6 +1,6 @@
 """Fetch pinned Three.js browser modules, verify npm integrity, and record local hashes.
 
-Bundled modules are served by tk without a CDN or Node runtime dependency.
+Bundled modules are served by tp without a CDN or Node runtime dependency.
 Use --verify for an offline artifact check.
 """
 import argparse

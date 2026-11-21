@@ -78,7 +78,7 @@ func main() {
 				}
 				fmt.Println(`{"type":"thread.started","thread_id":"fixture"}`)
 				fmt.Println(`{"type":"turn.started"}`)
-				fmt.Println(`{"type":"item.started","item":{"id":"cmd","type":"command_execution","command":"tk ticket show"}}`)
+				fmt.Println(`{"type":"item.started","item":{"id":"cmd","type":"command_execution","command":"tp ticket show"}}`)
 				fmt.Println(`{"type":"item.updated","item":{"id":"cmd","type":"command_execution","aggregated_output":"Planning proposal fixture\n"}}`)
 				time.Sleep(2 * time.Second)
 				fmt.Println(`{"type":"item.completed","item":{"id":"cmd","type":"command_execution","aggregated_output":"Planning proposal fixture\n"}}`)

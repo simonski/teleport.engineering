@@ -6,7 +6,7 @@ function rememberScriptCommand(line){if(scriptCommands.at(-1)!==line)scriptComma
 function retainScriptEntry(entry){const index=scriptEntries.findIndex(row=>row.key===entry.key);if(index<0)scriptEntries.push(entry);else scriptEntries[index]=entry;while(scriptEntries.length>32||scriptEntries.length>1&&scriptEntries.reduce((size,row)=>size+row.input.length+row.output.length,0)>262144)scriptEntries.shift();}
 
 // Split shell-style quoting into data only. No shell, substitutions or source evaluation.
-function parseTkCommand(line){
+function parseTpCommand(line){
   const words=[];let word='',quote='',escaped=false,started=false;
   for(const char of line){
     if(escaped){word+=char;escaped=false;started=true;continue;}
@@ -21,10 +21,10 @@ function parseTkCommand(line){
   if(started)words.push(word);
   if(!words.length)return null;
   if(words.length===1&&['clear','exit','help'].includes(words[0]))return {local:words[0]};
-  if(words[0]!=='tk')throw new Error('Enter a tk command, such as tk ticket ls.');
+  if(words[0]!=='tp')throw new Error('Enter a tp command, such as tp ticket ls.');
   return {args:words};
 }
-function formatTkResult(value,machine){
+function formatTpResult(value,machine){
   if(machine)return JSON.stringify(value,null,2);
   const line=item=>item&&typeof item==='object'&&!Array.isArray(item)?Object.keys(item).sort().map(key=>key+'='+JSON.stringify(item[key])).join('  '):JSON.stringify(item);
   if(value&&typeof value==='object'&&!Array.isArray(value)&&Array.isArray(value.items)){
@@ -38,7 +38,7 @@ function formatTkResult(value,machine){
 async function openScriptConsole(){
   const actor=session?.account.id,initialDetail=detailEpoch,epoch=++scriptConsoleEpoch;
   if(!actor||foregroundOpen()||session?.account.id!==actor||detailEpoch!==initialDetail)return;
-  const dialog=openDialog('tk console',`<p id="script-status" role="status">Enter a tk command. Type tk help for commands.</p><div id="script-result" tabindex="0" role="log" aria-label="Console output" aria-live="polite"></div><div class="script-prompt"><span class="script-prompt-marker" aria-hidden="true">$</span><textarea id="script-source" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="1048576" aria-label="tk command" placeholder="tk ticket ls"></textarea></div>`,'Run');
+  const dialog=openDialog('tp console',`<p id="script-status" role="status">Enter a tp command. Type tp help for commands.</p><div id="script-result" tabindex="0" role="log" aria-label="Console output" aria-live="polite"></div><div class="script-prompt"><span class="script-prompt-marker" aria-hidden="true">$</span><textarea id="script-source" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="1048576" aria-label="tp command" placeholder="tp ticket ls"></textarea></div>`,'Run');
   dialog.classList.add('script-console');byId('cancel').hidden=true;
   const viewerDetail=detailEpoch,source=byId('script-source'),form=byId('editor-form'),submitButton=form.querySelector('button[type=submit]'),transcript=byId('script-result');
   submitButton.id='script-submit';submitButton.setAttribute('aria-label','Run command');source.parentElement.append(submitButton);
@@ -49,17 +49,17 @@ async function openScriptConsole(){
   source.value=scriptDraft;source.oninput=()=>{changed();historyIndex=scriptCommands.length;};
   form.onsubmit=async event=>{
     event.preventDefault();if(busy)return;const text=source.value,editRevision=revision;let parsed;
-    try{parsed=parseTkCommand(text);if(!parsed)return;}catch(error){byId('script-status').textContent=error.message;return;}
+    try{parsed=parseTpCommand(text);if(!parsed)return;}catch(error){byId('script-status').textContent=error.message;return;}
     rememberScriptCommand(text);historyIndex=scriptCommands.length;
     if(parsed.local==='clear'){scriptEntries=[];source.value='';changed();draw();return;}
     if(parsed.local==='exit'){dialog.close();return;}
-    const args=parsed.local==='help'?['tk','help']:parsed.args,key=crypto.randomUUID(),entry={key,input:text,state:'Resolving…',output:'',error:false};retainScriptEntry(entry);draw();busy=true;submitButton.disabled=true;byId('script-status').textContent='Running…';
+    const args=parsed.local==='help'?['tp','help']:parsed.args,key=crypto.randomUUID(),entry={key,input:text,state:'Resolving…',output:'',error:false};retainScriptEntry(entry);draw();busy=true;submitButton.disabled=true;byId('script-status').textContent='Running…';
     try{
       const resolved=await api('resolveConsoleCommand',{args});if(!current())return;
       entry.output=resolved.diagnostic||'';entry.state=resolved.operation?'Calling '+resolved.operation+'…':'';draw();
       if(resolved.operation==='logout'){await signOut();return;}
       const result=resolved.operation?await api(resolved.operation,resolved.data||{}):null;if(!current())return;
-      entry.output+=(resolved.operation?formatTkResult(result,!!resolved.machine):resolved.data!==undefined?formatTkResult(resolved.data,!!resolved.machine):resolved.output||'');entry.state='';byId('script-status').textContent='Ready';
+      entry.output+=(resolved.operation?formatTpResult(result,!!resolved.machine):resolved.data!==undefined?formatTpResult(resolved.data,!!resolved.machine):resolved.output||'');entry.state='';byId('script-status').textContent='Ready';
       if(source.value===text&&revision===editRevision){source.value='';changed();}
     }catch(error){if(!current()||error.staleInteraction)return;entry.error=true;entry.state='';entry.output+=(error.message||'Command failed')+(error.status===undefined?'\nOutcome may be unconfirmed. Check state before retrying; reuse the request ID shown above if one was generated.':'');byId('script-status').textContent='Command failed';}
     finally{busy=false;if(current()){submitButton.disabled=false;draw();source.focus({preventScroll:true});}}

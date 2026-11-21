@@ -1,4 +1,4 @@
-"""Exercise the real tk command catalogue and text capture against an owned zero-model HTTP fixture."""
+"""Exercise the real tp command catalogue and text capture against an owned zero-model HTTP fixture."""
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=ROOT / "bin/tk")
+    parser.add_argument("--binary", type=Path, default=ROOT / "bin/tp")
     args = parser.parse_args()
     receipts, calls, failures, old_server = {}, [], [], [False]
 
@@ -70,7 +70,7 @@ def main():
     thread = threading.Thread(target=lambda: fixture.serve_forever(poll_interval=.05), daemon=True)
     thread.start()
     try:
-        with tempfile.TemporaryDirectory(prefix="tk-cli-proof-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tp-cli-proof-") as temporary:
             folder = Path(temporary)
             endpoint = "http://127.0.0.1:" + str(fixture.server_port)
             config = folder / "client.json"
@@ -78,7 +78,7 @@ def main():
             config.chmod(0o600)
             environment = dict(os.environ, TELEPORT_CONFIG=str(config), TELEPORT_SERVER=endpoint)
 
-            def tk(*arguments, input=None, okay=True):
+            def tp(*arguments, input=None, okay=True):
                 result = subprocess.run([str(args.binary), *arguments], input=input, env=environment, capture_output=True, text=True, timeout=5)
                 if okay and result.returncode:
                     raise AssertionError("CLI fixture command failed: " + result.stderr)
@@ -86,29 +86,29 @@ def main():
                     raise AssertionError("Invalid command succeeded")
                 return result
 
-            catalogue = json.loads(tk("commands", "-json").stdout)["commands"]
+            catalogue = json.loads(tp("commands", "-json").stdout)["commands"]
             assert {"agent ls", "ticket show", "project ls", "import -project NAME [FILE | -i]"} <= {item["command"] for item in catalogue}
             assert len(catalogue) > 100 and not calls
-            overview = tk().stdout
-            assert "\n  agent " in overview and "\n  ticket " in overview and "\n  tk " not in overview and "\n  agent ls " not in overview
-            agent_help = tk("agent").stdout
-            assert "tk agent ls " in agent_help and "tk ticket show " not in agent_help and not calls
-            assert "-project" in tk("agent", "ls", "-h").stdout and not calls
-            assert json.loads(tk("agent", "ls", "-project", "2", "-json").stdout)["items"] == []
-            assert json.loads(tk("agent", "ls", "-f", "-", "-json", input='{"projectId":2}').stdout)["items"] == []
+            overview = tp().stdout
+            assert "\n  agent " in overview and "\n  ticket " in overview and "\n  tp " not in overview and "\n  agent ls " not in overview
+            agent_help = tp("agent").stdout
+            assert "tp agent ls " in agent_help and "tp ticket show " not in agent_help and not calls
+            assert "-project" in tp("agent", "ls", "-h").stdout and not calls
+            assert json.loads(tp("agent", "ls", "-project", "2", "-json").stdout)["items"] == []
+            assert json.loads(tp("agent", "ls", "-f", "-", "-json", input='{"projectId":2}').stdout)["items"] == []
             before = len(calls)
             for name in ("init", "serve", "_session-daemon"):
-                tk("api", name, okay=False)
+                tp("api", name, okay=False)
             assert len(calls) == before
-            invalid = tk("agent", "ls", "-json", "-limit", "private-invalid-integer", okay=False)
+            invalid = tp("agent", "ls", "-json", "-limit", "private-invalid-integer", okay=False)
             assert not invalid.stdout and "private-invalid-integer" not in invalid.stderr
 
             text = "CLI capture fixture\n\nKeep Unicode: 月 🌙\n  and exact indentation.\n"
             source = folder / "notes.txt"
             source.write_bytes(text.encode())
             common = ["-project", "Flight", "-title", "CLI capture fixture", "-request-id", "same-capture", "-json"]
-            file_result = json.loads(tk("import", str(source), *common).stdout)
-            pipe_result = json.loads(tk("import", "-i", *common, input=text).stdout)
+            file_result = json.loads(tp("import", str(source), *common).stdout)
+            pipe_result = json.loads(tp("import", "-i", *common, input=text).stdout)
             assert file_result["id"] == pipe_result["id"] and file_result["text"] == pipe_result["text"] == text
             assert len(receipts) == 1
             assert receipts["same-capture"][0]["origin"] == "import"
@@ -185,7 +185,7 @@ def main():
             missing = subprocess.run([str(args.binary), "login"], env=login_env, input="", capture_output=True, text=True, timeout=5)
             assert missing.returncode != 0 and "TELEPORT_USERNAME" in missing.stderr
             old_server[0] = True
-            tk("import", str(source), "-project", "Flight", "-request-id", "legacy-server")
+            tp("import", str(source), "-project", "Flight", "-request-id", "legacy-server")
             assert "origin" not in receipts["legacy-server"][0]
             assert not failures, failures
     finally:

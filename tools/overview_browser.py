@@ -4,9 +4,9 @@ import time
 from backlog_browser import verify_backlog
 
 
-def verify_overview(browser, tk, project, stage=lambda name: None):
+def verify_overview(browser, tp, project, stage=lambda name: None):
     def call(operation, data):
-        return json.loads(tk(operation, "--data", json.dumps(data)))
+        return json.loads(tp(operation, "--data", json.dumps(data)))
 
     browser("set", "viewport", "1600", "1000")
     goal = call("createTicket", {"projectId": project["id"], "kind": "goal", "title": "Launch the project", "agent": False, "requestId": "overview-goal"})
@@ -28,7 +28,7 @@ def verify_overview(browser, tk, project, stage=lambda name: None):
     browser("eval", "document.activeElement?.blur()")
     browser("press", "n"); browser("wait", '#editor [name="title"]'); browser("press", "Escape")
     stage("overview-backlog")
-    verify_backlog(browser,tk,project,goal,epic,stories,stage)
+    verify_backlog(browser,tp,project,goal,epic,stories,stage)
     assert call("getTicket", {"id": stories[1]["id"]})["version"] == stories[1]["version"]
     stage("overview-attention")
     browser("click", "#account"); browser("eval", "document.querySelector('#account-attention').focus()")
@@ -36,7 +36,7 @@ def verify_overview(browser, tk, project, stage=lambda name: None):
     browser("eval", "if(document.querySelector('#account-menu').hidden||!document.querySelector('#attention-submenu').hidden)throw new Error('Empty Attention submenu lost its parent')")
     browser("press", "Escape")
     agent = call("createTicket", {"projectId": project["id"], "title": "Review this proposed scope", "requestId": "overview-attention"})
-    settings = json.loads(tk("getSession"))["settings"]
+    settings = json.loads(tp("getSession"))["settings"]
     call("setExecutionMode", {"mode": "demo", "expectedVersion": settings["version"]})
     call("requestRefinement", {"id": agent["id"], "expectedVersion": agent["version"]})
     deadline = time.monotonic() + 5
@@ -46,7 +46,7 @@ def verify_overview(browser, tk, project, stage=lambda name: None):
             break
         time.sleep(.05)
     assert agent.get("attention")
-    settings = json.loads(tk("getSession"))["settings"]
+    settings = json.loads(tp("getSession"))["settings"]
     call("setExecutionMode", {"mode": "off", "expectedVersion": settings["version"]})
     browser("eval", "workspace().catch(error=>{if(!error.staleInteraction)throw error;})")
     browser("wait", "--fn", "tickets.some(ticket=>ticket.id===" + str(agent["id"]) + "&&ticket.attention)")
@@ -93,7 +93,7 @@ def verify_overview(browser, tk, project, stage=lambda name: None):
     browser("wait", "--fn", "!flowDirty&&!workflowMutation&&!!workflowMapRuntime")
     persisted = call("getWorkflow", {"workflowKey": key})
     assert not persisted["published"] and len(persisted["phases"]) == before + 2
-    assert next(item for item in json.loads(tk("listProjects"))["items"] if item["id"] == project["id"])["humanWorkflow"] == "human@1"
+    assert next(item for item in json.loads(tp("listProjects"))["items"] if item["id"] == project["id"])["humanWorkflow"] == "human@1"
     browser("set", "viewport", "390", "844")
     browser("screenshot", "/tmp/teleport-workflow-inventory-mobile.png")
     browser("click", '#nav-views [data-view="Home"]')
