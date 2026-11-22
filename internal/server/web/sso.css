@@ -7,3 +7,5 @@
 .google-sign-in:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .google-enrollment{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
 .google-enrollment strong{margin-right:auto;overflow-wrap:anywhere}
+.desktop-authorization{display:grid;gap:12px}
+.desktop-authorization h1,.desktop-authorization p{margin:0}

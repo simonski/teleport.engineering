@@ -110,6 +110,8 @@ func InitializeWithOptions(ctx context.Context, db *store.Store, options Initial
 }
 
 type Service struct {
+	clientAuthMu   sync.Mutex
+	clientGrants   map[string]clientAuthorization
 	skillMu        sync.Mutex
 	localEndpoint  string
 	localMu        sync.Mutex
@@ -150,6 +152,14 @@ func publicAccount(a model.Account) model.Account { a.PasswordHash = ""; return 
 func (s *Service) Call(ctx context.Context, token, operation string, raw json.RawMessage) (any, error) {
 	if len(raw) == 0 {
 		raw = json.RawMessage(`{}`)
+	}
+	switch operation {
+	case "authorizeClient":
+		return s.authorizeClient(ctx, token, raw)
+	case "exchangeClientAuthorization":
+		return s.exchangeClient(ctx, raw)
+	case "getMenuStatus":
+		return s.menuStatus(ctx, token, raw)
 	}
 	if operation == "getAuthCapabilities" {
 		if err := parse(raw, &struct{}{}); err != nil {

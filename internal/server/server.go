@@ -95,6 +95,10 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 			}
 		}
 		op := r.PathValue("operation")
+		if op == "authorizeClient" && (r.Header.Get("Origin") == "" || r.Header.Get("Authorization") != "") {
+			writeError(w, &app.Error{Status: 403, Code: "browser_required", Message: "Authorize the desktop client from the signed-in browser"})
+			return
+		}
 		if op == "resolveConsoleCommand" {
 			identity, authErr := service.Call(r.Context(), token, "getSession", json.RawMessage(`{}`))
 			if authErr != nil {
@@ -248,8 +252,11 @@ func openAPI(version string) map[string]any {
 				Error app.Error `json:"error"`
 			}{})}}}
 		}
-		if op.Name == "login" || op.Name == "getAuthCapabilities" {
+		if op.Name == "login" || op.Name == "getAuthCapabilities" || op.Name == "exchangeClientAuthorization" {
 			post["security"] = []any{}
+		}
+		if op.Name == "authorizeClient" {
+			post["security"] = []any{map[string]any{"session": []string{}}}
 		}
 	}
 	addGoogleOpenAPI(paths)

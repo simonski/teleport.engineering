@@ -20,6 +20,7 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 	home, _ := os.UserHomeDir()
 	config := flags.String("config", env("TELEPORT_CONFIG", filepath.Join(home, ".teleport", "client.json")), "client credentials")
 	machine := flags.Bool("json", false, "print the project as JSON")
+	menu := flags.Bool("menu", false, "offer to install the optional macOS menu bar")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -27,7 +28,16 @@ func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) er
 		return err
 	}
 	if flags.NArg() != 0 {
-		return errors.New("usage: tp setup [-server URL] [-config FILE] [-json]")
+		return errors.New("usage: tp setup [-server URL] [-config FILE] [-json] or tp setup -menu [-server URL]")
+	}
+	if *menu {
+		selected := env("TELEPORT_SERVER", "https://teleport.engineering")
+		flags.Visit(func(value *flag.Flag) {
+			if value.Name == "server" {
+				selected = *endpoint
+			}
+		})
+		return setupMenu(selected, input, out, diagnostics)
 	}
 	*endpoint = strings.TrimRight(*endpoint, "/")
 	creds, err := readCredentials(*endpoint, *config)

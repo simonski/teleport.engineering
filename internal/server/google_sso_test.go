@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"teleport/internal/app"
+	"teleport/internal/clientauth"
 	"teleport/internal/model"
 )
 
@@ -41,10 +42,11 @@ type googleTestTransport func(*http.Request) (*http.Response, error)
 func (f googleTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestGoogleSSOCallback(t *testing.T) {
-	for _, outcome := range []string{"", "waitlist", "registered", "unverified", "changed"} {
+	for _, testName := range []string{"admitted", "waitlist", "registered", "unverified", "changed", "desktop"} {
+		outcome := testName
 		name := outcome
-		if name == "" {
-			name = "admitted"
+		if name == "admitted" || name == "desktop" {
+			outcome = ""
 		}
 		t.Run(name, func(t *testing.T) {
 			const origin = "https://workspace.example.test"
@@ -81,11 +83,23 @@ func TestGoogleSSOCallback(t *testing.T) {
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
 			})}
 			g := &googleSSO{service: svc, hosts: []string{"workspace.example.test"}, client: client, attempts: map[string]googleAttempt{}}
+			var desktop url.Values
+			startURL := origin + googleStartPath
+			if name == "desktop" {
+				desktop = url.Values{
+					clientauth.PortField: {"32123"}, clientauth.StateField: {clientauth.Secret()},
+					clientauth.ChallengeField: {clientauth.Challenge(clientauth.Secret())},
+				}
+				startURL += "?" + desktop.Encode()
+			}
 			start := httptest.NewRecorder()
-			g.start(start, httptest.NewRequest(http.MethodGet, origin+googleStartPath, nil))
+			g.start(start, httptest.NewRequest(http.MethodGet, startURL, nil))
 			target, err := url.Parse(start.Header().Get("Location"))
 			if err != nil || target.Host != "accounts.google.com" || target.Query().Get("code_challenge_method") != "S256" {
 				t.Fatalf("unexpected authorization redirect: %v", target)
+			}
+			if target.Query().Has(clientauth.PortField) {
+				t.Fatal("desktop continuation leaked to Google")
 			}
 			state := target.Query().Get("state")
 			challenge = target.Query().Get("code_challenge")
@@ -109,6 +123,9 @@ func TestGoogleSSOCallback(t *testing.T) {
 			}
 			got := callback(cookies[0])
 			want, calls := "/", 1
+			if desktop != nil {
+				want += "?" + desktop.Encode()
+			}
 			switch outcome {
 			case "waitlist", "registered":
 				want = "/?google=" + outcome

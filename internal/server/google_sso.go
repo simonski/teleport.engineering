@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"teleport/internal/app"
+	"teleport/internal/clientauth"
 	"teleport/internal/model"
 )
 
@@ -34,6 +35,7 @@ type googleAttempt struct {
 	verifier string
 	expires  time.Time
 	version  int64
+	desktop  url.Values
 }
 
 type googleSSO struct {
@@ -71,14 +73,15 @@ func (g *googleSSO) requestOrigin(r *http.Request) string {
 
 func (g *googleSSO) start(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	desktop := clientauth.Continuation(r.URL.Query())
 	cfg, err := g.service.GoogleSignInConfig(r.Context())
 	if err != nil {
-		googleLanding(w, r, "unavailable")
+		googleLanding(w, r, "unavailable", desktop)
 		return
 	}
 	callback, err := url.Parse(cfg.RedirectURI)
 	if err != nil || !trustedHost(callback.Host, g.hosts) {
-		googleLanding(w, r, "unavailable")
+		googleLanding(w, r, "unavailable", desktop)
 		return
 	}
 	origin := callback.Scheme + "://" + callback.Host
@@ -86,10 +89,11 @@ func (g *googleSSO) start(w http.ResponseWriter, r *http.Request) {
 		// Only redirect to a configured HTTPS host. This also prevents a
 		// bad loopback port or scheme from creating a redirect loop.
 		if !configuredHost(callback.Host, g.hosts) || callback.Scheme != "https" {
-			googleLanding(w, r, "unavailable")
+			googleLanding(w, r, "unavailable", desktop)
 			return
 		}
-		http.Redirect(w, r, origin+googleStartPath, http.StatusSeeOther)
+		target := url.URL{Scheme: callback.Scheme, Host: callback.Host, Path: googleStartPath, RawQuery: desktop.Encode()}
+		http.Redirect(w, r, target.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -103,10 +107,10 @@ func (g *googleSSO) start(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(g.attempts) >= 1024 {
 		g.mu.Unlock()
-		googleLanding(w, r, "unavailable")
+		googleLanding(w, r, "unavailable", desktop)
 		return
 	}
-	g.attempts[state] = googleAttempt{browser, verifier, now.Add(googleAttemptLifetime), cfg.Version}
+	g.attempts[state] = googleAttempt{browser, verifier, now.Add(googleAttemptLifetime), cfg.Version, desktop}
 	g.mu.Unlock()
 
 	http.SetCookie(w, &http.Cookie{Name: googleCookie, Value: browser, Path: app.GoogleCallbackPath, Secure: callback.Scheme == "https", HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(googleAttemptLifetime.Seconds())})
@@ -134,49 +138,53 @@ func (g *googleSSO) callback(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	cookie, err := r.Cookie(googleCookie)
 	if err != nil {
-		googleLanding(w, r, "failed")
+		googleLanding(w, r, "failed", nil)
 		return
 	}
 	query := r.URL.Query()
 	attempt, ok := g.consume(query.Get("state"), cookie.Value)
 	if !ok {
-		googleLanding(w, r, "failed")
+		googleLanding(w, r, "failed", nil)
 		return
 	}
 	secure := secureRequest(r, g.hosts)
 	http.SetCookie(w, &http.Cookie{Name: googleCookie, Path: app.GoogleCallbackPath, Secure: secure, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	cfg, err := g.service.GoogleSignInConfig(r.Context())
 	if err != nil || cfg.Version != attempt.version || cfg.RedirectURI != g.requestOrigin(r)+app.GoogleCallbackPath {
-		googleLanding(w, r, "unavailable")
+		googleLanding(w, r, "unavailable", attempt.desktop)
 		return
 	}
 	code := query.Get("code")
 	if query.Get("error") != "" || code == "" || len(code) > 4096 {
-		googleLanding(w, r, "failed")
+		googleLanding(w, r, "failed", attempt.desktop)
 		return
 	}
 	subject, email, ok := g.googleIdentity(r.Context(), cfg, code, attempt.verifier)
 	if !ok {
-		googleLanding(w, r, "failed")
+		googleLanding(w, r, "failed", attempt.desktop)
 		return
 	}
 	token, outcome, err := g.service.GoogleSignIn(r.Context(), attempt.version, subject, email)
 	if err != nil {
-		googleLanding(w, r, "failed")
+		googleLanding(w, r, "failed", attempt.desktop)
 		return
 	}
 	if token != "" {
 		setSignInCookie(w, token, secure)
 	}
-	googleLanding(w, r, outcome)
+	googleLanding(w, r, outcome, attempt.desktop)
 }
 
-func googleLanding(w http.ResponseWriter, r *http.Request, outcome string) {
-	target := "/"
-	if outcome != "" {
-		target += "?google=" + url.QueryEscape(outcome)
+func googleLanding(w http.ResponseWriter, r *http.Request, outcome string, continuation url.Values) {
+	query := make(url.Values)
+	for key, value := range continuation {
+		query[key] = value
 	}
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	if outcome != "" {
+		query.Set("google", outcome)
+	}
+	target := url.URL{Path: "/", RawQuery: query.Encode()}
+	http.Redirect(w, r, target.String(), http.StatusSeeOther)
 }
 
 func (g *googleSSO) googleIdentity(ctx context.Context, cfg model.GoogleSSOConfig, code, verifier string) (string, string, bool) {

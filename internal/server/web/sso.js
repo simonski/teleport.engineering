@@ -33,13 +33,46 @@ function bindGoogleLogin() {
       const settings=await api('getAuthCapabilities');
       if(!section.isConnected||!settings.google)return;
       const link=document.createElement('a');
-      link.className='google-sign-in';link.href='/auth/google/start';
+      const desktop=desktopAuthorization();
+      link.className='google-sign-in';link.href='/auth/google/start'+(desktop?'?'+desktop.toString():'');
       const badge=document.createElement('img');
       badge.src='/google-sign-in.png';badge.alt='Sign in with Google';badge.width=180;badge.height=40;
       link.append(badge);
       section.append(link);
     }catch(error){if(!error.staleInteraction&&section.isConnected&&!screen)notice('Google sign-in status is unavailable.');}
   }
+}
+
+function desktopAuthorization(){
+  const query=new URL(window.location.href).searchParams;
+  const port=query.get('desktop_port'),state=query.get('desktop_state'),challenge=query.get('desktop_challenge');
+  const secret=/^[A-Za-z0-9_-]{43}$/;
+  if(!/^[1-9][0-9]{0,4}$/.test(port)||Number(port)>65535||!secret.test(state)||!secret.test(challenge))return null;
+  const fields=new URL('https://localhost').searchParams;
+  fields.set('desktop_port',port);fields.set('desktop_state',state);fields.set('desktop_challenge',challenge);
+  return fields;
+}
+
+async function approveDesktopSignIn(request){
+  let account;
+  try{account=(await api('getSession')).account;}
+  catch(error){if(error.status===401||error.status===403){login();return;}throw error;}
+  root.innerHTML='<main class="login desktop-authorization"><h1>Connect Teleport</h1><p id="desktop-account"></p><button type="button" id="desktop-approve">Allow sign-in</button><button type="button" class="secondary" id="desktop-switch">Use another account</button><p id="desktop-status" role="status"></p></main>';
+  byId('desktop-account').textContent='Authorize the desktop app as '+account.username+'.';
+  const approve=byId('desktop-approve'),change=byId('desktop-switch'),status=byId('desktop-status');
+  const act=async run=>{
+    approve.disabled=change.disabled=true;
+    try{await run();}catch(error){status.textContent=error.message;approve.disabled=change.disabled=false;}
+  };
+  approve.onclick=()=>act(async()=>{
+    const result=await api('authorizeClient',{challenge:request.get('desktop_challenge'),accountId:account.id});
+    if(!/^[A-Za-z0-9_-]{43}$/.test(result.code))throw new Error('Invalid desktop authorization response');
+    const callback=new URL('http://127.0.0.1:'+request.get('desktop_port')+'/teleport/callback');
+    callback.searchParams.set('code',result.code);
+    callback.searchParams.set('state',request.get('desktop_state'));
+    window.location.assign(callback);
+  });
+  change.onclick=()=>act(async()=>{await api('logout');login();});
 }
 
 async function openGoogleSettings(){

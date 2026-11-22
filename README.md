@@ -57,6 +57,14 @@ Administrators can review the queue, approve enrollment, and separately grant ad
 
 Google accounts use the part of the verified email before `@` as their Teleport username. The profile badge shows initials such as `SG` for `simon.gauld`. The homepage uses the [official Google sign-in badge](https://developers.google.com/identity/branding-guidelines).
 
+### macOS menu bar
+
+Run `tp setup -menu` and confirm to build the native menu app using the already installed Apple Command Line Tools. Setup installs it for the current user and registers it to start at login. Use `tp menu` to reopen it after quitting.
+
+Use **Sign In** to open the browser and approve a desktop session after signing in with a Teleport password or configured Google SSO. **Settings** and **Switch Server** accept and remember separate origins, such as `https://teleport.engineering` and `https://teleport.example.ts.net`. Each origin retains its own sign-in. Configure an additional TLS proxy hostname through `DEPLOY_PUBLIC_HOSTS` or `tp serve -public-host` before clients use it. A server needs the desktop authorization API shipped in 1.1.0 or later.
+
+The menu shows blue for connected idle, green for Doing, orange for attention, and gray when signed out or unavailable. **Open Teleport** opens the selected workspace in the browser. The same browser sign-in is available from the terminal with `tp login -browser -server URL`.
+
 After `tp init`, start the server and sign in, then run `tp setup` to create the Teleport project and choose its description and agent limit. Administrators can also choose the server execution mode. Setup refuses an existing Teleport project without changing settings.
 
 Capture freeform text with `tp import -project Teleport notes.txt` or `tp import -project Teleport` and paste multiple lines, finishing with Ctrl-D. Piped input and `tp import -` work too. Capture creates one Idea in the required named project and preserves up to 20,000 UTF-8 bytes without truncation. `-title` overrides the derived title; `-request-id` reuses the identity printed on stderr for an uncertain retry; `-json` emits the full Idea on stdout. Classification and goal creation follow separately and no agent is started by capture.

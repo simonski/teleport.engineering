@@ -63,6 +63,17 @@ func run(args []string) error {
 	if command == "setup" {
 		return setupProject(args[1:], os.Stdin, os.Stdout, os.Stderr)
 	}
+	if command == "menu" {
+		if len(args) == 2 && (args[1] == "-h" || args[1] == "-help") {
+			fmt.Println("Usage: tp menu")
+			fmt.Println("Start the optional macOS menu bar installed by tp setup -menu.")
+			return nil
+		}
+		if len(args) != 1 {
+			return errors.New("usage: tp menu")
+		}
+		return startMenu()
+	}
 	if command == "config" {
 		return configSSO(args[1:], os.Stdin, os.Stdout, os.Stderr)
 	}
@@ -238,6 +249,10 @@ func run(args []string) error {
 	machine := flags.Bool("json", false, "pretty-print JSON response")
 	username := flags.String("username", "", "username (otherwise TELEPORT_USERNAME or prompt)")
 	passwordStdin := flags.Bool("password-stdin", false, "read password from standard input")
+	browserLogin := false
+	if command == "login" {
+		flags.BoolVar(&browserLogin, "browser", false, "sign in through the browser with a password or Google")
+	}
 	var exportState, restoreState bool
 	var stateSHA string
 	adminPasswordStdin := false
@@ -427,7 +442,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	if command == "login" {
+	if command == "login" && !browserLogin {
 		name, password, err := loginInput(*username, *passwordStdin, os.Stdin, os.Stderr)
 		if err != nil {
 			return err
@@ -436,7 +451,17 @@ func run(args []string) error {
 		*data = string(encoded)
 	}
 	client.token = creds.Token
-	body, err := client.operation(command, []byte(*data))
+	var body []byte
+	if browserLogin {
+		if *username != "" || *passwordStdin {
+			return errors.New("use -browser on its own or supply password options")
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		body, err = browserSignIn(ctx, &client, os.Stderr, openSignInBrowser)
+	} else {
+		body, err = client.operation(command, []byte(*data))
+	}
 	if err != nil {
 		return err
 	}

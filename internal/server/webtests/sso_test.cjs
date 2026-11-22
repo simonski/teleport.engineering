@@ -40,6 +40,15 @@ test('Google link appears only when the sign-in capability is enabled', async ()
   assert.equal(disabled.section.children.length, 0);
 });
 
+test('Google sign-in preserves only the validated desktop continuation', async () => {
+  const fields = new URLSearchParams({desktop_port:'32123', desktop_state:'A'.repeat(43), desktop_challenge:'B'.repeat(43)});
+  const fixture = loginFixture('?' + fields + '&redirect=https%3A%2F%2Fexample.test', true);
+  await new Promise(setImmediate);
+  const href = new URL(fixture.section.children[0].href, 'https://app.example.test');
+  assert.equal(href.pathname, '/auth/google/start');
+  assert.equal(href.searchParams.toString(), fields.toString());
+});
+
 test('profile initials split the username and ignore duplicate-name suffixes', () => {
   const workspace = fs.readFileSync(path.join(__dirname, '../web/workspace.js'), 'utf8');
   const context = vm.createContext({document: {addEventListener() {}}, setInterval() {}});

@@ -69,7 +69,7 @@ func resolveConsoleCommand(input ConsoleCommandInput, version string) (ConsoleCo
 			}
 			data, _ := json.Marshal(openAPI(version))
 			return ConsoleCommandResult{Data: data, Machine: len(args) == 2}, nil
-		case "init", "serve", "setup", "login", "import":
+		case "init", "serve", "setup", "login", "import", "menu":
 			return ConsoleCommandResult{}, errors.New("This local or interactive command requires the tp CLI; the browser console uses the current signed-in session")
 		case "config":
 			return ConsoleCommandResult{}, errors.New("Use System settings to configure Google sign-in")
@@ -95,6 +95,9 @@ func resolveConsoleCommand(input ConsoleCommandInput, version string) (ConsoleCo
 	}
 	if len(expanded) == 0 {
 		return ConsoleCommandResult{}, errors.New("Unknown command")
+	}
+	if expanded[0] == "authorizeClient" || expanded[0] == "exchangeClientAuthorization" {
+		return ConsoleCommandResult{}, errors.New("Start desktop sign-in from the Teleport client")
 	}
 	if expanded[0] == "logout" && len(expanded) == 1 {
 		return ConsoleCommandResult{Operation: "logout", Data: json.RawMessage(`{}`)}, nil

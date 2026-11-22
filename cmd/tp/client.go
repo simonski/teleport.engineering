@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,21 +44,25 @@ type apiClient struct {
 }
 
 func (api *apiClient) operation(operation string, data []byte) ([]byte, error) {
+	return api.operationContext(context.Background(), operation, data)
+}
+
+func (api *apiClient) operationContext(ctx context.Context, operation string, data []byte) ([]byte, error) {
 	if len(data) > 1<<20 {
 		return nil, errors.New("complete JSON request exceeds 1 MiB")
 	}
 	if !json.Valid(data) {
 		return nil, errors.New("-data must be valid JSON")
 	}
-	req, err := http.NewRequest(http.MethodPost, api.endpoint+"/api/tools/"+operation, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, api.endpoint+"/api/tools/"+operation, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if api.token != "" {
+	if api.token != "" && operation != "exchangeClientAuthorization" {
 		req.Header.Set("Authorization", "Bearer "+api.token)
 	}
-	return api.send(req, operation == "setupGoogleSSO")
+	return api.send(req, operation == "setupGoogleSSO" || operation == "exchangeClientAuthorization")
 }
 
 func (api *apiClient) get(path string) ([]byte, error) {
@@ -75,9 +80,16 @@ func (api *apiClient) send(req *http.Request, secret bool) ([]byte, error) {
 		ip := net.ParseIP(host)
 		loopback := strings.EqualFold(host, "localhost") || ip != nil && ip.IsLoopback()
 		if req.URL.Scheme != "https" && (req.URL.Scheme != "http" || !loopback) {
-			return nil, errors.New("Google sign-in setup requires HTTPS or local loopback")
+			return nil, errors.New("This operation requires HTTPS or local loopback")
 		}
 		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	} else if req.Header.Get("Authorization") != "" {
+		client.CheckRedirect = func(current *http.Request, via []*http.Request) error {
+			if current.URL.Scheme != req.URL.Scheme || !strings.EqualFold(current.URL.Host, req.URL.Host) || len(via) >= 10 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		}
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -85,7 +97,10 @@ func (api *apiClient) send(req *http.Request, secret bool) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if secret && resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return nil, errors.New("Google sign-in setup requires the server's final URL")
+		return nil, errors.New("This operation requires the server's final URL")
+	}
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return nil, errors.New("Use the server's final URL")
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, (4<<20)+1))
 	if err != nil {
