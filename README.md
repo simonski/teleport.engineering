@@ -9,7 +9,7 @@ make db-up
 ./bin/tp serve
 ```
 
-Open http://localhost:9999 and sign in with the initial local account `admin` / `password`. Initialization starts no listener or agent.
+Open http://localhost:16000 and sign in with the initial local account `admin` / `password`. Initialization starts no listener or agent.
 
 PostgreSQL is the sole application database. `make db-up` explicitly starts a private socket-only development cluster and writes owner-only `~/.teleport/database.json`; `make db-down` stops it without deleting data. An existing installation requires explicit migration before local setup. For an external instance, set `TELEPORT_DB` or provide `-db-config PATH` containing `{"url":"postgresql://…"}` with mode `0600`. Keep passwords out of command arguments. Test and smoke tools provision separate disposable clusters automatically; `TELEPORT_POSTGRES_BIN` selects server binaries.
 
@@ -21,7 +21,7 @@ Run `make sbom` to generate `sbom.cdx.json`.
 
 Release builds use pure Go, stripped debugging information and a compressed embedded web bundle. `make build-debug` retains native debug information when needed. `python3 -B tools/pack_web.py` refreshes the committed bundle after editing browser assets; normal builds refresh it automatically, and `--verify` detects a stale bundle. Deployments use compressed SCP while retaining binary hash verification.
 
-After initialization, `make run PORT=9999` builds and serves the local installation. Use `bin/tp serve -p PORT` to serve an existing build on a loopback port.
+After initialization, `make run` builds and serves the local installation on loopback port `16000`. Use `make run PORT=PORT` or `bin/tp serve -p PORT` to select a different port. The CLI connects to `http://localhost:16000` by default. Set `TELEPORT_SERVER` or pass `-server URL` to connect elsewhere.
 
 `make check` is the lightweight source/unit gate: formatting, Python/browser syntax, serial browser unit tests, documentation and tooling tests. It starts no application Go suite, database, real browser or deliberate timeout fixture. Preview its exact scope with `python3 -B tools/check.py --plan`. Broad checks are currently paused; use focused tests until explicitly resumed.
 
@@ -67,15 +67,15 @@ The menu shows blue for connected idle, green for Doing, orange for attention, a
 
 ### macOS background server
 
-Start PostgreSQL independently and initialize the installation with `tp init -db-config FILE`. The owner-only JSON file contains the PostgreSQL URL. Then run `tp service setup -db-config FILE` to install and start the server as a LaunchAgent for the current macOS user. It listens on `127.0.0.1:10000` by default. Use `-p PORT` to choose a different loopback port during setup. The server starts at login and launchd relaunches it after an unexpected exit.
+Start PostgreSQL independently and initialize the installation with `tp init -db-config FILE`. The owner-only JSON file contains the PostgreSQL URL. Then run `tp service setup -db-config FILE` to install and start the server as a LaunchAgent for the current macOS user. It listens on `127.0.0.1:16000` by default. Existing LaunchAgents keep the port selected during setup. Use `-p PORT` to choose a different loopback port during setup. The server starts at login and launchd relaunches it after an unexpected exit.
 
-For local CLI access, set `TELEPORT_SERVER=http://127.0.0.1:10000` or pass `-server http://127.0.0.1:10000`. Serving before the first macOS login requires a system LaunchDaemon and database and ingress services available at boot.
+Serving before the first macOS login requires a system LaunchDaemon and database and ingress services available at boot.
 
 - `tp service status` reports launchd and database readiness, the running PID and build, and the server log path. Add `-json` for machine-readable output.
 - `tp service stop` unloads the job until the next login or an explicit `tp service start`. Use `tp service restart` to drain HTTP requests and start the same release again. The database and separate local-session daemon keep running.
 - `tp service upgrade -binary /path/to/tp` stages the candidate by SHA-256, starts it and checks database readiness, PID and build. A failed check reloads the previous release if it was running. Upgrades require the same server major version and compatible database schema. Versioned binaries remain under `~/.teleport/service/releases`.
 
-For tailnet access, include the actual Tailscale HTTPS hostname when installing the LaunchAgent, for example `tp service setup -public-host teleport.example.ts.net`. Point the approved `svc:teleport` Tailscale Service at the loopback listener with `tailscale serve --service=svc:teleport --https=443 http://127.0.0.1:10000`. Use that HTTPS origin in the menu bar settings. See [Tailscale Services](https://tailscale.com/docs/features/tailscale-services).
+For tailnet access, include the actual Tailscale HTTPS hostname when installing the LaunchAgent, for example `tp service setup -public-host teleport.example.ts.net`. Point the approved `svc:teleport` Tailscale Service at the loopback listener with `tailscale serve --service=svc:teleport --https=443 http://127.0.0.1:16000`. Use that HTTPS origin in the menu bar settings. See [Tailscale Services](https://tailscale.com/docs/features/tailscale-services).
 
 After `tp init`, start the server and sign in, then run `tp setup` to create the Teleport project and choose its description and agent limit. Administrators can also choose the server execution mode. Setup refuses an existing Teleport project without changing settings.
 

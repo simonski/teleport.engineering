@@ -30,7 +30,7 @@ func configSSO(args []string, input *os.File, out, diagnostics io.Writer) error 
 	flags := flag.NewFlagSet("config "+action, flag.ContinueOnError)
 	flags.SetOutput(diagnostics)
 	home, _ := os.UserHomeDir()
-	endpoint := flags.String("server", env("TELEPORT_SERVER", "http://localhost:9999"), "server URL")
+	endpoint := flags.String("server", defaultServerURL(), "server URL")
 	config := flags.String("config", env("TELEPORT_CONFIG", filepath.Join(home, ".teleport", "client.json")), "client credentials")
 	machine := flags.Bool("json", false, "print Google sign-in configuration metadata as JSON")
 	if err := flags.Parse(args[1:]); err != nil {

@@ -68,7 +68,7 @@ def main():
     if len(public_hosts)>10 or any(not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9.-]{0,251}[a-zA-Z0-9])?",host) or ".." in host or any(len(label)>63 or label.startswith("-") or label.endswith("-") for label in host.split(".")) for host in public_hosts):
         parser.error("Use up to ten bare public HTTPS hostnames")
     if not re.fullmatch(r"(?:127\.0\.0\.1|0\.0\.0\.0):[1-9][0-9]{0,4}",args.addr) or int(args.addr.rsplit(":",1)[1])>65535:
-        parser.error("Use a Linux listen address such as 127.0.0.1:9999")
+        parser.error("Use a Linux listen address such as 0.0.0.0:8000")
     if args.dry_run:
         if args.reset: print("RESET: archive the existing installation, stop owned processes, and create a fresh database and credentials")
         print(f"Build Linux {args.arch or 'architecture detected over SSH'}; scp to {args.host}:{directory}/releases; initialize only if needed; start {args.addr}; HTTPS hosts: {', '.join(public_hosts)}; retrieve protected credentials to .deploy/")

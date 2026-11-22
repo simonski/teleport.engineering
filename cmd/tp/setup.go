@@ -16,7 +16,7 @@ import (
 func setupProject(args []string, input io.Reader, out, diagnostics io.Writer) error {
 	flags := flag.NewFlagSet("setup", flag.ContinueOnError)
 	flags.SetOutput(diagnostics)
-	endpoint := flags.String("server", env("TELEPORT_SERVER", "http://localhost:9999"), "server URL")
+	endpoint := flags.String("server", defaultServerURL(), "server URL")
 	home, _ := os.UserHomeDir()
 	config := flags.String("config", env("TELEPORT_CONFIG", filepath.Join(home, ".teleport", "client.json")), "client credentials")
 	machine := flags.Bool("json", false, "print the project as JSON")

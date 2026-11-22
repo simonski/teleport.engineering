@@ -25,7 +25,7 @@ func serviceCommand(args []string, out, diagnostics io.Writer) error {
 	flags.SetOutput(diagnostics)
 	switch args[0] {
 	case "setup":
-		flags.IntVar(&options.port, "p", 10000, "listen on 127.0.0.1 at this port")
+		flags.IntVar(&options.port, "p", DEFAULT_PORT, "listen on 127.0.0.1 at this port")
 		flags.StringVar(&options.db, "db-config", os.Getenv("TELEPORT_DB_CONFIG"), "owner-only database configuration file (default ~/.teleport/database.json)")
 		flags.StringVar(&options.hosts, "public-host", "", "comma-separated trusted HTTPS proxy hostnames")
 		flags.StringVar(&options.runtime, "runtime-dir", os.Getenv("TELEPORT_RUNTIME_DIR"), "private local session daemon directory")

@@ -109,7 +109,7 @@ def main():
                     if argument.startswith(("-db=","--db=","-db-config=","--db-config=")):continue
                     command.append(argument)
                 command += ["-db-config",str(config)]
-                address="localhost:9999"
+                address="localhost:16000"
                 for index,argument in enumerate(command):
                     if argument in ("-addr","--addr"):address=command[index+1]
                     elif argument.startswith(("-addr=","--addr=")):address=argument.split("=",1)[1]

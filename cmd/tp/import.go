@@ -78,7 +78,7 @@ func captureText(arguments []string, input io.Reader, out, diagnostics io.Writer
 		}
 	}
 	if *endpoint == "" {
-		*endpoint = env("TELEPORT_SERVER", "http://localhost:9999")
+		*endpoint = defaultServerURL()
 	}
 	*endpoint = strings.TrimRight(*endpoint, "/")
 	if *config == "" {

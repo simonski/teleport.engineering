@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +27,14 @@ import (
 	"teleport/internal/store"
 	"teleport/internal/version"
 )
+
+const DEFAULT_PORT = 16000
+
+var defaultListenAddress = net.JoinHostPort("localhost", strconv.Itoa(DEFAULT_PORT))
+
+func defaultServerURL() string {
+	return env("TELEPORT_SERVER", "http://"+defaultListenAddress)
+}
 
 type credentials struct {
 	Server string `json:"server"`
@@ -238,7 +247,7 @@ func run(args []string) error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	dbPath := flags.String("db", "", "PostgreSQL URL (init/serve only; prefer a protected -db-config file for secrets)")
 	dbConfig := flags.String("db-config", env("TELEPORT_DB_CONFIG", filepath.Join(home, ".teleport", "database.json")), "owner-only database configuration JSON containing url")
-	addr := flags.String("addr", "localhost:9999", "listen address")
+	addr := flags.String("addr", defaultListenAddress, "listen address")
 	port := 0
 	if command == "serve" {
 		flags.IntVar(&port, "p", 0, "listen on this loopback port")
@@ -246,7 +255,7 @@ func run(args []string) error {
 	publicHost := flags.String("public-host", "", "comma-separated trusted HTTPS browser hostnames behind a TLS proxy (no scheme or path)")
 	runtimeRoot := flags.String("runtime-dir", env("TELEPORT_RUNTIME_DIR", ""), "private local session daemon state directory (serve only)")
 	terminalFixture := flags.Bool("enable-terminal-fixture", false, "enable the no-model development terminal fixture (serve only)")
-	endpoint := flags.String("server", env("TELEPORT_SERVER", "http://localhost:9999"), "server URL")
+	endpoint := flags.String("server", defaultServerURL(), "server URL")
 	config := flags.String("config", env("TELEPORT_CONFIG", filepath.Join(home, ".teleport", "client.json")), "client credential file")
 	data := flags.String("data", "{}", "JSON request")
 	machine := flags.Bool("json", false, "pretty-print JSON response")
