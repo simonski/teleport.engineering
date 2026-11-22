@@ -63,6 +63,9 @@ func run(args []string) error {
 	if command == "setup" {
 		return setupProject(args[1:], os.Stdin, os.Stdout, os.Stderr)
 	}
+	if command == "service" {
+		return serviceCommand(args[1:], os.Stdout, os.Stderr)
+	}
 	if command == "menu" {
 		if len(args) == 2 && (args[1] == "-h" || args[1] == "-help") {
 			fmt.Println("Usage: tp menu")
@@ -383,9 +386,15 @@ func run(args []string) error {
 			return hostErr
 		}
 		httpServer := server.HTTP(*addr, server.New(service, version.Server, publicHosts...))
+		listener, err := net.Listen("tcp", *addr)
+		if err != nil {
+			return err
+		}
 		stopCtx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 		defer cancel()
+		workerDone := make(chan struct{})
 		go func() {
+			defer close(workerDone)
 			ticker := time.NewTicker(500 * time.Millisecond)
 			defer ticker.Stop()
 			for {
@@ -411,20 +420,17 @@ func run(args []string) error {
 				}
 			}
 		}()
-		go func() {
-			<-stopCtx.Done()
-			shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			httpServer.Shutdown(shutdown)
-		}()
 		mode := initialState.Settings.ExecutionMode
 		if mode == "" {
 			mode = "off"
 		}
 		slog.Info("teleport listening", "address", *addr, "version", version.Server, "agents", mode)
-		err = httpServer.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
+		err = serveUntilStopped(stopCtx, httpServer, listener)
+		cancel()
+		select {
+		case <-workerDone:
+		case <-time.After(3 * time.Second):
+			return errors.Join(err, errors.New("server workers exceeded the shutdown deadline"))
 		}
 		return err
 	}
@@ -487,6 +493,25 @@ func run(args []string) error {
 		}
 	}
 	return printResponse(os.Stdout, body, *machine)
+}
+
+func serveUntilStopped(ctx context.Context, server *http.Server, listener net.Listener) error {
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(listener) }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdown); err != nil {
+			return errors.Join(err, server.Close())
+		}
+		if err := <-done; !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	}
 }
 func redactLocation(location string) string {
 	if strings.HasPrefix(location, "postgres") {

@@ -149,6 +149,12 @@ func Catalogue(operations []Operation) []Command {
 		{Command: "config disable-sso", Summary: "Disable Google sign-in"},
 		{Command: "init", Summary: "Initialize configured PostgreSQL; never starts services"},
 		{Command: "serve", Summary: "Run the web/API server and configured components"},
+		{Command: "service setup", Summary: "Install the macOS server LaunchAgent and start it"},
+		{Command: "service start", Summary: "Start the installed macOS server"},
+		{Command: "service status", Summary: "Inspect the installed macOS server and PostgreSQL readiness"},
+		{Command: "service stop", Summary: "Unload the macOS server until next login or start"},
+		{Command: "service restart", Summary: "Drain and restart the installed macOS server"},
+		{Command: "service upgrade", Summary: "Upgrade the macOS background server with verified rollback"},
 		{Command: "login", Operation: "login", Summary: "Sign in interactively or with TELEPORT_USERNAME and TELEPORT_PASSWORD"},
 		{Command: "logout", Summary: "Sign out of the current session"},
 		{Command: "import -project NAME [FILE | -i]", Summary: "Capture UTF-8 text as an Idea; classification follows separately"},
@@ -252,7 +258,7 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 	if len(args) >= 2 && args[0] == "project" && args[1] == "rm" {
 		return append([]string{"_project-remove"}, args[2:]...), false, nil
 	}
-	for _, native := range []string{"init", "setup", "config", "serve", "login", "logout", "skill", "version", "tools", "spec", "import", "menu"} {
+	for _, native := range []string{"init", "setup", "config", "serve", "service", "login", "logout", "skill", "version", "tools", "spec", "import", "menu"} {
 		if args[0] == native || strings.HasPrefix(args[0], "_") {
 			return args, false, nil
 		}
@@ -264,7 +270,7 @@ func Expand(args []string, out, diagnostics io.Writer, catalogue []Command, allo
 		if args[1] == "" {
 			return nil, false, errors.New("provide an API operation name")
 		}
-		for _, reserved := range []string{"init", "setup", "config", "serve", "skill", "version", "tools", "spec", "import", "menu", "help", "commands", "api"} {
+		for _, reserved := range []string{"init", "setup", "config", "serve", "service", "skill", "version", "tools", "spec", "import", "menu", "help", "commands", "api"} {
 			if args[1] == reserved {
 				return nil, false, errors.New("tp api accepts API operation names, not native commands")
 			}

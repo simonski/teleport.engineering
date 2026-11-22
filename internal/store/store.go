@@ -91,6 +91,10 @@ func (s *Store) Close() error {
 	}
 	return err
 }
+func (s *Store) Ready(ctx context.Context) error {
+	return s.connection.PingContext(ctx)
+}
+
 func (s *Store) Read(ctx context.Context) (*model.State, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

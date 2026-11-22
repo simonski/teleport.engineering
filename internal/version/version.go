@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	CLI    = "1.1.0"
-	Server = "1.1.0"
+	CLI    = "1.2.0"
+	Server = "1.2.0"
 
 	// Header advertises the server application version on every response.
 	Header = "X-Teleport-Version"

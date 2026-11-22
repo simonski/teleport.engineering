@@ -128,6 +128,8 @@ type Service struct {
 
 func New(db *store.Store) *Service { return &Service{db: db, controllerID: randomID()} }
 
+func (s *Service) Ready(ctx context.Context) error { return s.db.Ready(ctx) }
+
 type LoginResult struct {
 	Token   string        `json:"token"`
 	Account model.Account `json:"account"`

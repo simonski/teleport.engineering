@@ -69,7 +69,7 @@ func resolveConsoleCommand(input ConsoleCommandInput, version string) (ConsoleCo
 			}
 			data, _ := json.Marshal(openAPI(version))
 			return ConsoleCommandResult{Data: data, Machine: len(args) == 2}, nil
-		case "init", "serve", "setup", "login", "import", "menu":
+		case "init", "serve", "service", "setup", "login", "import", "menu":
 			return ConsoleCommandResult{}, errors.New("This local or interactive command requires the tp CLI; the browser console uses the current signed-in session")
 		case "config":
 			return ConsoleCommandResult{}, errors.New("Use System settings to configure Google sign-in")

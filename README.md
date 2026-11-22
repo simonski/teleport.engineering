@@ -65,6 +65,18 @@ Use **Sign In** to open the browser and approve a desktop session after signing 
 
 The menu shows blue for connected idle, green for Doing, orange for attention, and gray when signed out or unavailable. **Open Teleport** opens the selected workspace in the browser. The same browser sign-in is available from the terminal with `tp login -browser -server URL`.
 
+### macOS background server
+
+Start PostgreSQL independently and initialize the installation with `tp init -db-config FILE`. The owner-only JSON file contains the PostgreSQL URL. Then run `tp service setup -db-config FILE` to install and start the server as a LaunchAgent for the current macOS user. It listens on `127.0.0.1:10000` by default. Use `-p PORT` to choose a different loopback port during setup. The server starts at login and launchd relaunches it after an unexpected exit.
+
+For local CLI access, set `TELEPORT_SERVER=http://127.0.0.1:10000` or pass `-server http://127.0.0.1:10000`. Serving before the first macOS login requires a system LaunchDaemon and database and ingress services available at boot.
+
+- `tp service status` reports launchd and database readiness, the running PID and build, and the server log path. Add `-json` for machine-readable output.
+- `tp service stop` unloads the job until the next login or an explicit `tp service start`. Use `tp service restart` to drain HTTP requests and start the same release again. The database and separate local-session daemon keep running.
+- `tp service upgrade -binary /path/to/tp` stages the candidate by SHA-256, starts it and checks database readiness, PID and build. A failed check reloads the previous release if it was running. Upgrades require the same server major version and compatible database schema. Versioned binaries remain under `~/.teleport/service/releases`.
+
+For tailnet access, include the actual Tailscale HTTPS hostname when installing the LaunchAgent, for example `tp service setup -public-host teleport.example.ts.net`. Point the approved `svc:teleport` Tailscale Service at the loopback listener with `tailscale serve --service=svc:teleport --https=443 http://127.0.0.1:10000`. Use that HTTPS origin in the menu bar settings. See [Tailscale Services](https://tailscale.com/docs/features/tailscale-services).
+
 After `tp init`, start the server and sign in, then run `tp setup` to create the Teleport project and choose its description and agent limit. Administrators can also choose the server execution mode. Setup refuses an existing Teleport project without changing settings.
 
 Capture freeform text with `tp import -project Teleport notes.txt` or `tp import -project Teleport` and paste multiple lines, finishing with Ctrl-D. Piped input and `tp import -` work too. Capture creates one Idea in the required named project and preserves up to 20,000 UTF-8 bytes without truncation. `-title` overrides the derived title; `-request-id` reuses the identity printed on stderr for an uncertain retry; `-json` emits the full Idea on stdout. Classification and goal creation follow separately and no agent is started by capture.

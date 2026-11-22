@@ -97,7 +97,7 @@ func installMenu(ctx context.Context, home, executable, endpoint string, out io.
 	if output, err := exec.CommandContext(ctx, "/usr/bin/xcrun", "swiftc", "-O", sourceFile, "-o", filepath.Join(macOS, "TeleportMenu")).CombinedOutput(); err != nil {
 		return fmt.Errorf("build Teleport Menu: %w (%s)", err, strings.TrimSpace(string(output)))
 	}
-	if err := copyMenuCLI(executable, filepath.Join(macOS, "tp")); err != nil {
+	if err := copyExecutable(executable, filepath.Join(macOS, "tp")); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(stageContents, "Info.plist"), plist(menuInfo), 0644); err != nil {
@@ -166,7 +166,7 @@ func startMenu() error {
 	return nil
 }
 
-func copyMenuCLI(source, path string) error {
+func copyExecutable(source, path string) error {
 	input, err := os.Open(source)
 	if err != nil {
 		return err

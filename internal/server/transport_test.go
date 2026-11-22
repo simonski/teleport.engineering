@@ -85,3 +85,23 @@ func TestConfiguredHTTPSProxyOriginAndSecureCookies(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceReadinessRequiresLoopbackAndReportsUnavailableDatabase(t *testing.T) {
+	handler := server.New(nil, "1.2.0", "teleport.example.ts.net")
+	for _, tc := range []struct {
+		url, remote string
+		status      int
+	}{
+		{"http://127.0.0.1:10000/readyz", "127.0.0.1:5000", 503},
+		{"http://127.0.0.1:10000/readyz", "192.0.2.1:5000", 404},
+		{"https://teleport.example.ts.net/readyz", "127.0.0.1:5000", 404},
+	} {
+		req := httptest.NewRequest("GET", tc.url, nil)
+		req.RemoteAddr = tc.remote
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		if res.Code != tc.status {
+			t.Fatalf("%s from %s: got %d, want %d", tc.url, tc.remote, res.Code, tc.status)
+		}
+	}
+}

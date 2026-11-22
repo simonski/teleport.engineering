@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	_ "embed"
 	"encoding/base64"
@@ -15,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -40,6 +42,21 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 	registerGoogleSSO(mux, service, configuredHosts)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		write(w, 200, map[string]string{"status": "ok", "version": version})
+	})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		peer, _, _ := net.SplitHostPort(r.RemoteAddr)
+		if !net.ParseIP(peer).IsLoopback() || !trustedHost(r.Host, nil) {
+			http.NotFound(w, r)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		status, code := "ready", http.StatusOK
+		if service == nil || service.Ready(ctx) != nil {
+			status, code = "unavailable", http.StatusServiceUnavailable
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		write(w, code, Readiness{Status: status, PID: os.Getpid(), Version: version, BuildNumber: appversion.BuildNumber})
 	})
 	mux.HandleFunc("GET /openapi.json", func(w http.ResponseWriter, r *http.Request) { write(w, 200, openAPI(version)) })
 	mux.HandleFunc("GET /api/actions", func(w http.ResponseWriter, r *http.Request) { write(w, 200, map[string]any{"items": Operations}) })
@@ -180,6 +197,13 @@ func New(service *app.Service, version string, configuredHosts ...string) http.H
 		}
 		mux.ServeHTTP(w, r)
 	})
+}
+
+type Readiness struct {
+	Status      string `json:"status"`
+	PID         int    `json:"pid"`
+	Version     string `json:"version"`
+	BuildNumber string `json:"buildNumber"`
 }
 
 func setSignInCookie(w http.ResponseWriter, token string, secure bool) {
